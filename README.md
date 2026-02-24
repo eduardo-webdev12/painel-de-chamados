@@ -1,73 +1,107 @@
-# Welcome to your Lovable project
+📌 Plataforma Interna de Gestão de Chamados
 
-## Project info
+Sistema web desenvolvido para controle interno de chamados operacionais relacionados a ocorrências técnicas, com foco em rastreamento, monitoramento e tratativas recorrentes.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+A aplicação permite registrar, acompanhar e analisar ocorrências em tempo real, oferecendo indicadores estratégicos para apoio à tomada de decisão.
 
-## How can I edit this code?
+🎯 Objetivo
 
-There are several ways of editing your application.
+Criar uma solução simples, organizada e eficiente para:
 
-**Use Lovable**
+Registrar ocorrências operacionais
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+Controlar chamados recorrentes
 
-Changes made via Lovable will be committed automatically to this repo.
+Monitorar tempo de resolução
 
-**Use your preferred IDE**
+Gerar indicadores de desempenho
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+Manter histórico estruturado para consulta
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+🚀 Funcionalidades
+📋 Registro de Chamados
 
-Follow these steps:
+Cadastro de identificação (ex: placa ou ID do ativo)
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+Nome da empresa solicitante
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+Tecnologia ou sistema envolvido
 
-# Step 3: Install the necessary dependencies.
-npm i
+Descrição detalhada da ocorrência
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+Observações complementares
 
-**Edit a file directly in GitHub**
+Tempo estimado de indisponibilidade
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Registro automático de data e hora
 
-**Use GitHub Codespaces**
+Controle de status (Aberto, Em Tratativa, Resolvido)
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+📊 Dashboard de Acompanhamento
 
-## What technologies are used for this project?
+Total de ocorrências do dia
 
-This project is built with:
+Chamados em aberto
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+Chamados resolvidos
 
-## How can I deploy this project?
+Indicadores de recorrência
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+Tempo médio de resolução
 
-## Can I connect a custom domain to my Lovable project?
+🔎 Filtros e Busca
 
-Yes, you can!
+Filtro por data
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+Filtro por empresa
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+Filtro por tecnologia
+
+Pesquisa rápida por identificação
+
+🛠️ Tecnologias Utilizadas
+
+HTML5
+
+CSS3
+
+JavaScript (Vanilla JS)
+
+Estrutura responsiva
+
+Manipulação dinâmica de DOM
+
+Armazenamento local (LocalStorage)
+
+💡 Estrutura do Projeto
+/index.html
+/style.css
+/script.js
+/README.md
+📈 Possíveis Evoluções
+
+Integração com banco de dados (Firebase, Supabase ou MySQL)
+
+Controle de usuários e permissões
+
+Exportação de relatórios em PDF/Excel
+
+Gráficos avançados com Chart.js
+
+Integração com API externa
+
+Controle por níveis de acesso
+
+🔐 Observação
+
+Este projeto foi desenvolvido como solução interna para organização operacional e melhoria de processos.
+Não contém dados reais ou informações sensíveis.
+
+📌 Status do Projeto
+
+✅ Versão funcional
+🔄 Em evolução contínua
+
+📄 Licença
+
+Uso interno / Projeto demonstrativo.
