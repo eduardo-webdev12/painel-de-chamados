@@ -1,4 +1,4 @@
-import { LayoutDashboard, List, PlusCircle } from "lucide-react";
+import { LayoutDashboard, List, PlusCircle, FileText, Settings } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar,
@@ -14,6 +14,8 @@ const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Chamados", url: "/chamados", icon: List },
   { title: "Novo Chamado", url: "/novo-chamado", icon: PlusCircle },
+  { title: "Relatórios", url: "/relatorios", icon: FileText },
+  { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
 export function AppSidebar() {
