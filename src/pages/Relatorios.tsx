@@ -55,12 +55,14 @@ export default function Relatorios() {
 
     autoTable(doc, {
       startY: 28,
-      head: [["Placa", "Transportadora", "Tecnologia", "Status", "Recorrente", "Tempo", "Abertura", "Resolução"]],
+      head: [["Placa", "Transportadora", "Tecnologia", "Status", "Criado por", "Cargo", "Recorrente", "Tempo", "Abertura", "Resolução"]],
       body: filtrados.map((c) => [
         c.placa,
         c.transportadora,
         c.tecnologia,
         c.status,
+        c.created_by_name || "—",
+        c.created_by_role || "—",
         c.recorrente ? `Sim (${c.contagem_recorrencia}x)` : "Não",
         c.tempo_travada,
         format(parseISO(c.data_abertura), "dd/MM/yy HH:mm"),

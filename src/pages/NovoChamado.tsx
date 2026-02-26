@@ -55,6 +55,9 @@ export default function NovoChamado() {
       recorrente: form.recorrente,
       contagem_recorrencia: form.recorrente ? 1 : 0,
       criado_por: user?.id || null,
+      created_by_name: profile?.nome || null,
+      created_by_email: profile?.email || null,
+      created_by_role: profile?.cargo || null,
     });
 
     setLoading(false);

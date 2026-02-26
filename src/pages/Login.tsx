@@ -147,7 +147,7 @@ export default function Login() {
               transition={{ delay: 0.6, duration: 0.4 }}
               className="text-center text-xs text-muted-foreground mt-6"
             >
-              © {new Date().getFullYear()} VX Integrações • Todos os direitos reservados
+              © {new Date().getFullYear()} Plataforma SAC VX Integrações • Todos os direitos reservados
             </motion.p>
           </CardContent>
         </Card>
