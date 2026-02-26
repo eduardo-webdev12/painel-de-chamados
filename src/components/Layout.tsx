@@ -4,6 +4,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/hooks/useTheme";
 import { Button } from "@/components/ui/button";
 import { LogOut, Moon, Sun } from "lucide-react";
+import logoVx from "@/assets/logo-vx.png";
 
 export function Layout({ children }: { children: React.ReactNode }) {
   const { profile, signOut } = useAuth();
@@ -14,12 +15,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col">
-          <header className="flex h-14 items-center justify-between border-b bg-card px-4">
+          <header className="flex h-14 items-center justify-between border-b bg-card px-4 shadow-sm">
             <div className="flex items-center gap-3">
               <SidebarTrigger />
-              <span className="text-sm font-medium text-muted-foreground hidden sm:inline">
-                Plataforma SAC – Controle de Placas Travadas
-              </span>
+              <div className="hidden sm:flex items-center gap-2">
+                <img src={logoVx} alt="VX" className="h-7 w-7 rounded object-contain" />
+                <span className="text-sm font-semibold text-foreground">
+                  Painel de Chamados
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-3">
               <Button variant="ghost" size="icon" onClick={toggleTheme} title="Alternar tema">
