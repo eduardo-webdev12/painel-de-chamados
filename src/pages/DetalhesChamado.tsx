@@ -105,6 +105,8 @@ export default function DetalhesChamado() {
     { label: "Tecnologia", value: chamado.tecnologia },
     { label: "Tempo Travada", value: tempoAtual },
     { label: "Recorrente", value: chamado.recorrente ? `Sim (${chamado.contagem_recorrencia}x)` : "Não" },
+    { label: "Criado por", value: chamado.created_by_name || "—" },
+    { label: "Cargo", value: chamado.created_by_role || "—" },
     { label: "Data de Abertura", value: format(parseISO(chamado.data_abertura), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) },
     ...(chamado.data_resolucao ? [{ label: "Data de Resolução", value: format(parseISO(chamado.data_resolucao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) }] : []),
   ];

@@ -71,10 +71,10 @@ export default function Login() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground tracking-tight">
-                  VX Integrações
+                  PLATAFORMA SAC
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Sistema de Monitoramento e Chamados
+                  VX INTEGRAÇÕES
                 </p>
               </div>
             </motion.div>
@@ -147,7 +147,7 @@ export default function Login() {
               transition={{ delay: 0.6, duration: 0.4 }}
               className="text-center text-xs text-muted-foreground mt-6"
             >
-              © {new Date().getFullYear()} VX Integrações • Todos os direitos reservados
+              © {new Date().getFullYear()} Plataforma SAC VX Integrações • Todos os direitos reservados
             </motion.p>
           </CardContent>
         </Card>

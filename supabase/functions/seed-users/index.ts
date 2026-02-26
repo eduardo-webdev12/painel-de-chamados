@@ -6,7 +6,7 @@ const corsHeaders = {
 };
 
 const USERS = [
-  { email: "eduardo.lima@vxconsult.com.br", password: "Eduardo7070#", nome: "Eduardo Lima", role: "admin", cargo: "Administrador" },
+  { email: "eduardo.lima@vxconsult.com.br", password: "Eduardo7070#", nome: "Eduardo Lima", role: "admin", cargo: "SAC VX INTEGRAÇÕES (Administrador)" },
   { email: "matheus.vieira@vxconsult.com.br", password: "monitoramento@2026", nome: "Matheus Vieira", role: "gerente", cargo: "Gerente Geral de Operações" },
   { email: "felipe@vxconsult.com.br", password: "monitoramento@2026", nome: "Felipe", role: "lider", cargo: "Líder de Monitoramento" },
   { email: "cibele@vxconsult.com.br", password: "monitoramento@2026", nome: "Cibele", role: "lider", cargo: "Líder de Monitoramento" },

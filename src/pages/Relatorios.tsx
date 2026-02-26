@@ -27,6 +27,8 @@ export default function Relatorios() {
       Transportadora: c.transportadora,
       Tecnologia: c.tecnologia,
       Status: c.status,
+      "Criado por": c.created_by_name || "—",
+      Cargo: c.created_by_role || "—",
       Recorrente: c.recorrente ? `Sim (${c.contagem_recorrencia}x)` : "Não",
       "Tempo Travada": c.tempo_travada,
       "Data Abertura": format(parseISO(c.data_abertura), "dd/MM/yyyy HH:mm"),
@@ -47,18 +49,20 @@ export default function Relatorios() {
 
     const doc = new jsPDF({ orientation: "landscape" });
     doc.setFontSize(16);
-    doc.text("Relatório de Chamados — VX Integrações", 14, 15);
+    doc.text("Relatório de Chamados — Plataforma SAC VX Integrações", 14, 15);
     doc.setFontSize(9);
     doc.text(`Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm")} | ${filtrados.length} registros`, 14, 22);
 
     autoTable(doc, {
       startY: 28,
-      head: [["Placa", "Transportadora", "Tecnologia", "Status", "Recorrente", "Tempo", "Abertura", "Resolução"]],
+      head: [["Placa", "Transportadora", "Tecnologia", "Status", "Criado por", "Cargo", "Recorrente", "Tempo", "Abertura", "Resolução"]],
       body: filtrados.map((c) => [
         c.placa,
         c.transportadora,
         c.tecnologia,
         c.status,
+        c.created_by_name || "—",
+        c.created_by_role || "—",
         c.recorrente ? `Sim (${c.contagem_recorrencia}x)` : "Não",
         c.tempo_travada,
         format(parseISO(c.data_abertura), "dd/MM/yy HH:mm"),
