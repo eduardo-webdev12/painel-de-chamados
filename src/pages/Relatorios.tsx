@@ -27,6 +27,8 @@ export default function Relatorios() {
       Transportadora: c.transportadora,
       Tecnologia: c.tecnologia,
       Status: c.status,
+      "Criado por": c.created_by_name || "—",
+      Cargo: c.created_by_role || "—",
       Recorrente: c.recorrente ? `Sim (${c.contagem_recorrencia}x)` : "Não",
       "Tempo Travada": c.tempo_travada,
       "Data Abertura": format(parseISO(c.data_abertura), "dd/MM/yyyy HH:mm"),
