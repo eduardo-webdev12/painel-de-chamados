@@ -18,6 +18,9 @@ export type Database = {
         Row: {
           contagem_recorrencia: number
           created_at: string
+          created_by_email: string | null
+          created_by_name: string | null
+          created_by_role: string | null
           criado_por: string | null
           data_abertura: string
           data_resolucao: string | null
@@ -36,6 +39,9 @@ export type Database = {
         Insert: {
           contagem_recorrencia?: number
           created_at?: string
+          created_by_email?: string | null
+          created_by_name?: string | null
+          created_by_role?: string | null
           criado_por?: string | null
           data_abertura?: string
           data_resolucao?: string | null
@@ -54,6 +60,9 @@ export type Database = {
         Update: {
           contagem_recorrencia?: number
           created_at?: string
+          created_by_email?: string | null
+          created_by_name?: string | null
+          created_by_role?: string | null
           criado_por?: string | null
           data_abertura?: string
           data_resolucao?: string | null
