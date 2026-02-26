@@ -9,6 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import logoVx from "@/assets/logo-vx.png";
 
 const menuItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
@@ -21,10 +22,12 @@ const menuItems = [
 export function AppSidebar() {
   return (
     <Sidebar>
-      <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-4">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground font-bold text-sm">
-          VX
-        </div>
+      <div className="flex h-16 items-center gap-3 border-b border-sidebar-border px-4">
+        <img
+          src={logoVx}
+          alt="VX Integrações"
+          className="h-9 w-9 rounded-lg object-contain bg-white p-0.5"
+        />
         <div className="flex flex-col">
           <span className="text-sm font-semibold text-sidebar-foreground">VX Integrações</span>
           <span className="text-xs text-sidebar-foreground/60">SAC - Monitoramento</span>
