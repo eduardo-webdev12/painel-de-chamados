@@ -214,6 +214,7 @@ export default function Dashboard() {
                   <TableHead>Transportadora</TableHead>
                   <TableHead>Tecnologia</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Criado por</TableHead>
                   <TableHead>Recorrente</TableHead>
                   <TableHead>Data</TableHead>
                 </TableRow>
@@ -225,6 +226,10 @@ export default function Dashboard() {
                     <TableCell>{c.transportadora}</TableCell>
                     <TableCell>{c.tecnologia}</TableCell>
                     <TableCell><StatusBadge status={c.status as any} /></TableCell>
+                    <TableCell>
+                      <div className="text-sm">{c.created_by_name || "—"}</div>
+                      {c.created_by_role && <div className="text-xs text-muted-foreground">{c.created_by_role}</div>}
+                    </TableCell>
                     <TableCell>{c.recorrente ? `Sim (${c.contagem_recorrencia}x)` : "Não"}</TableCell>
                     <TableCell className="text-muted-foreground">{format(parseISO(c.data_abertura), "dd/MM/yy HH:mm")}</TableCell>
                   </TableRow>
