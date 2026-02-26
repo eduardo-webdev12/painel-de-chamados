@@ -49,7 +49,7 @@ export default function Relatorios() {
 
     const doc = new jsPDF({ orientation: "landscape" });
     doc.setFontSize(16);
-    doc.text("Relatório de Chamados — VX Integrações", 14, 15);
+    doc.text("Relatório de Chamados — Plataforma SAC VX Integrações", 14, 15);
     doc.setFontSize(9);
     doc.text(`Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm")} | ${filtrados.length} registros`, 14, 22);
 
