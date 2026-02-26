@@ -71,10 +71,10 @@ export default function Login() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-foreground tracking-tight">
-                  VX Integrações
+                  PLATAFORMA SAC
                 </h1>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Sistema de Monitoramento e Chamados
+                  VX INTEGRAÇÕES
                 </p>
               </div>
             </motion.div>
