@@ -14,7 +14,7 @@ import { ptBR } from "date-fns/locale";
 
 export default function NovoChamado() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     placa: "",
