@@ -90,6 +90,7 @@ export default function Chamados() {
                   <TableHead>Tecnologia</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Criado por</TableHead>
+                  <TableHead>Finalizado por</TableHead>
                   <TableHead>Recorrente</TableHead>
                   <TableHead>Data</TableHead>
                 </TableRow>
