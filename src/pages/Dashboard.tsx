@@ -214,7 +214,8 @@ export default function Dashboard() {
                   <TableHead>Transportadora</TableHead>
                   <TableHead>Tecnologia</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Criado por</TableHead>
+                   <TableHead>Criado por</TableHead>
+                  <TableHead>Finalizado por</TableHead>
                   <TableHead>Recorrente</TableHead>
                   <TableHead>Data</TableHead>
                 </TableRow>
