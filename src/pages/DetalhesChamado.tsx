@@ -4,9 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { StatusBadge } from "@/components/StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -17,9 +19,11 @@ import type { StatusChamado } from "@/types/chamado";
 export default function DetalhesChamado() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { profile } = useAuth();
   const [chamado, setChamado] = useState<ChamadoDB | null>(null);
   const [observacao, setObservacao] = useState("");
   const [status, setStatus] = useState<StatusChamado>("Aberto");
+  const [dataRetornoSinal, setDataRetornoSinal] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -54,50 +58,66 @@ export default function DetalhesChamado() {
   }
 
   const handleSave = async () => {
+    // Validate retorno sinal when resolving
+    if (status === "Resolvido" && chamado.status !== "Resolvido" && !dataRetornoSinal) {
+      toast({ title: "Campo obrigatório", description: "Informe a data e hora do retorno do sinal.", variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
-    const updates: any = { observacao, status };
+    const updates: Record<string, unknown> = { observacao, status };
+
     if (status === "Resolvido" && chamado.status !== "Resolvido") {
+      const retornoDate = new Date(dataRetornoSinal);
       updates.data_resolucao = new Date().toISOString();
-      // Calc final tempo_travada
+      updates.data_hora_retorno_sinal = retornoDate.toISOString();
+      updates.finalizado_por_nome = profile?.nome || null;
+      updates.finalizado_por_email = profile?.email || null;
+      updates.finalizado_por_cargo = profile?.cargo || null;
+      updates.finalizado_em = new Date().toISOString();
+
+      // Calculate tempo_travada from hora_travou to data_hora_retorno_sinal
       if (chamado.hora_travou) {
-        const diff = differenceInMinutes(new Date(), parseISO(chamado.hora_travou));
+        const diff = differenceInMinutes(retornoDate, parseISO(chamado.hora_travou));
         updates.tempo_travada = diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
       }
     }
+
     const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
     setSaving(false);
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
-    setChamado({ ...chamado, ...updates });
+    setChamado({ ...chamado, ...updates } as ChamadoDB);
     toast({ title: "Chamado atualizado" });
   };
 
   const handleVoltouTravar = async () => {
     setSaving(true);
-    const { error } = await supabase.from("chamados").update({
+    const updates = {
       status: "Aberto",
       data_resolucao: null,
       recorrente: true,
       contagem_recorrencia: chamado.contagem_recorrencia + 1,
       hora_travou: new Date().toISOString(),
-    }).eq("id", chamado.id);
+      finalizado_por_nome: null,
+      finalizado_por_email: null,
+      finalizado_por_cargo: null,
+      finalizado_em: null,
+      data_hora_retorno_sinal: null,
+    };
+    const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
     setSaving(false);
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
-    setChamado({
-      ...chamado,
-      status: "Aberto",
-      data_resolucao: null,
-      recorrente: true,
-      contagem_recorrencia: chamado.contagem_recorrencia + 1,
-      hora_travou: new Date().toISOString(),
-    });
+    setChamado({ ...chamado, ...updates } as ChamadoDB);
     toast({ title: "Placa marcada como travada novamente", description: `Recorrência: ${chamado.contagem_recorrencia + 1}x` });
   };
+
+  const showRetornoSinal = status === "Resolvido" && chamado.status !== "Resolvido";
 
   const infoRows = [
     { label: "Placa", value: chamado.placa },
@@ -106,8 +126,18 @@ export default function DetalhesChamado() {
     { label: "Tempo Travada", value: tempoAtual },
     { label: "Recorrente", value: chamado.recorrente ? `Sim (${chamado.contagem_recorrencia}x)` : "Não" },
     { label: "Criado por", value: chamado.created_by_name || "—" },
-    { label: "Cargo", value: chamado.created_by_role || "—" },
+    { label: "Cargo (criador)", value: chamado.created_by_role || "—" },
     { label: "Data de Abertura", value: format(parseISO(chamado.data_abertura), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) },
+    ...(chamado.finalizado_por_nome ? [
+      { label: "Finalizado por", value: chamado.finalizado_por_nome },
+      { label: "Cargo (finalizador)", value: chamado.finalizado_por_cargo || "—" },
+    ] : []),
+    ...(chamado.finalizado_em ? [
+      { label: "Finalizado em", value: format(parseISO(chamado.finalizado_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) },
+    ] : []),
+    ...(chamado.data_hora_retorno_sinal ? [
+      { label: "Retorno do sinal", value: format(parseISO(chamado.data_hora_retorno_sinal), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) },
+    ] : []),
     ...(chamado.data_resolucao ? [{ label: "Data de Resolução", value: format(parseISO(chamado.data_resolucao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) }] : []),
   ];
 
@@ -155,6 +185,22 @@ export default function DetalhesChamado() {
               </SelectContent>
             </Select>
           </div>
+
+          {showRetornoSinal && (
+            <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <Label className="font-semibold">Data e hora do retorno do sinal *</Label>
+              <Input
+                type="datetime-local"
+                value={dataRetornoSinal}
+                onChange={(e) => setDataRetornoSinal(e.target.value)}
+                required
+              />
+              <p className="text-xs text-muted-foreground">
+                Informe quando o sinal da placa retornou. Este valor será usado para calcular o tempo total travado.
+              </p>
+            </div>
+          )}
+
           <div className="space-y-2">
             <Label>Observações</Label>
             <Textarea rows={4} value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Adicione ou edite as observações..." />
