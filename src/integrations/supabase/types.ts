@@ -23,8 +23,13 @@ export type Database = {
           created_by_role: string | null
           criado_por: string | null
           data_abertura: string
+          data_hora_retorno_sinal: string | null
           data_resolucao: string | null
           descricao: string
+          finalizado_em: string | null
+          finalizado_por_cargo: string | null
+          finalizado_por_email: string | null
+          finalizado_por_nome: string | null
           hora_travou: string | null
           id: string
           observacao: string | null
@@ -44,8 +49,13 @@ export type Database = {
           created_by_role?: string | null
           criado_por?: string | null
           data_abertura?: string
+          data_hora_retorno_sinal?: string | null
           data_resolucao?: string | null
           descricao: string
+          finalizado_em?: string | null
+          finalizado_por_cargo?: string | null
+          finalizado_por_email?: string | null
+          finalizado_por_nome?: string | null
           hora_travou?: string | null
           id?: string
           observacao?: string | null
@@ -65,8 +75,13 @@ export type Database = {
           created_by_role?: string | null
           criado_por?: string | null
           data_abertura?: string
+          data_hora_retorno_sinal?: string | null
           data_resolucao?: string | null
           descricao?: string
+          finalizado_em?: string | null
+          finalizado_por_cargo?: string | null
+          finalizado_por_email?: string | null
+          finalizado_por_nome?: string | null
           hora_travou?: string | null
           id?: string
           observacao?: string | null
