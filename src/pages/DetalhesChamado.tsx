@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { StatusBadge } from "@/components/StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -14,7 +15,8 @@ import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowLeft, RotateCcw } from "lucide-react";
 import type { ChamadoDB } from "@/hooks/useChamados";
-import type { StatusChamado } from "@/types/chamado";
+
+type EncerrarOpcao = "destravou" | "continua_travado" | "sem_cobertura";
 
 export default function DetalhesChamado() {
   const { id } = useParams<{ id: string }>();
@@ -22,8 +24,9 @@ export default function DetalhesChamado() {
   const { profile } = useAuth();
   const [chamado, setChamado] = useState<ChamadoDB | null>(null);
   const [observacao, setObservacao] = useState("");
-  const [status, setStatus] = useState<StatusChamado>("Aberto");
+  const [status, setStatus] = useState("Aberto");
   const [dataRetornoSinal, setDataRetornoSinal] = useState("");
+  const [encerrarOpcao, setEncerrarOpcao] = useState<EncerrarOpcao>("destravou");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -33,15 +36,14 @@ export default function DetalhesChamado() {
       if (data) {
         setChamado(data);
         setObservacao(data.observacao || "");
-        setStatus(data.status as StatusChamado);
+        setStatus(data.status);
       }
       setLoading(false);
     });
   }, [id]);
 
-  // Live timer
   const tempoAtual = useMemo(() => {
-    if (!chamado || !chamado.hora_travou || chamado.status === "Resolvido") return chamado?.tempo_travada || "—";
+    if (!chamado || !chamado.hora_travou || chamado.status.startsWith("Resolvido") || chamado.status.startsWith("Encerrado")) return chamado?.tempo_travada || "—";
     const diff = differenceInMinutes(new Date(), parseISO(chamado.hora_travou));
     return diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
   }, [chamado]);
@@ -57,30 +59,39 @@ export default function DetalhesChamado() {
     );
   }
 
+  const isEncerramento = status === "Resolvido" && !chamado.status.startsWith("Resolvido") && !chamado.status.startsWith("Encerrado");
+
   const handleSave = async () => {
-    // Validate retorno sinal when resolving
-    if (status === "Resolvido" && chamado.status !== "Resolvido" && !dataRetornoSinal) {
-      toast({ title: "Campo obrigatório", description: "Informe a data e hora do retorno do sinal.", variant: "destructive" });
+    if (isEncerramento && encerrarOpcao === "destravou" && !dataRetornoSinal) {
+      toast({ title: "Campo obrigatório", description: "Informe a data e hora que destravou.", variant: "destructive" });
       return;
     }
 
     setSaving(true);
-    const updates: Record<string, unknown> = { observacao, status };
+    const updates: Record<string, unknown> = { observacao };
 
-    if (status === "Resolvido" && chamado.status !== "Resolvido") {
-      const retornoDate = new Date(dataRetornoSinal);
+    if (isEncerramento) {
       updates.data_resolucao = new Date().toISOString();
-      updates.data_hora_retorno_sinal = retornoDate.toISOString();
       updates.finalizado_por_nome = profile?.nome || null;
       updates.finalizado_por_email = profile?.email || null;
       updates.finalizado_por_cargo = profile?.cargo || null;
       updates.finalizado_em = new Date().toISOString();
 
-      // Calculate tempo_travada from hora_travou to data_hora_retorno_sinal
-      if (chamado.hora_travou) {
-        const diff = differenceInMinutes(retornoDate, parseISO(chamado.hora_travou));
-        updates.tempo_travada = diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
+      if (encerrarOpcao === "destravou") {
+        updates.status = "Resolvido";
+        const retornoDate = new Date(dataRetornoSinal);
+        updates.data_hora_retorno_sinal = retornoDate.toISOString();
+        if (chamado.hora_travou) {
+          const diff = differenceInMinutes(retornoDate, parseISO(chamado.hora_travou));
+          updates.tempo_travada = diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
+        }
+      } else if (encerrarOpcao === "continua_travado") {
+        updates.status = "Encerrado — Continua travado";
+      } else if (encerrarOpcao === "sem_cobertura") {
+        updates.status = "Encerrado — Sem cobertura";
       }
+    } else {
+      updates.status = status;
     }
 
     const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
@@ -117,8 +128,6 @@ export default function DetalhesChamado() {
     toast({ title: "Placa marcada como travada novamente", description: `Recorrência: ${chamado.contagem_recorrencia + 1}x` });
   };
 
-  const showRetornoSinal = status === "Resolvido" && chamado.status !== "Resolvido";
-
   const infoRows = [
     { label: "Placa", value: chamado.placa },
     { label: "Transportadora", value: chamado.transportadora },
@@ -141,6 +150,8 @@ export default function DetalhesChamado() {
     ...(chamado.data_resolucao ? [{ label: "Data de Resolução", value: format(parseISO(chamado.data_resolucao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) }] : []),
   ];
 
+  const chamadoFinalizado = chamado.status === "Resolvido" || chamado.status.startsWith("Encerrado");
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-center gap-3">
@@ -148,7 +159,7 @@ export default function DetalhesChamado() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Chamado – {chamado.placa}</h1>
           <div className="mt-1 flex items-center gap-2">
-            <StatusBadge status={chamado.status as StatusChamado} />
+            <StatusBadge status={chamado.status} />
             {chamado.recorrente && <span className="text-xs text-destructive font-medium">Recorrente ({chamado.contagem_recorrencia}x)</span>}
           </div>
         </div>
@@ -176,28 +187,57 @@ export default function DetalhesChamado() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Status</Label>
-            <Select value={status} onValueChange={(v) => setStatus(v as StatusChamado)}>
+            <Select value={status} onValueChange={setStatus} disabled={chamadoFinalizado}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Aberto">Aberto</SelectItem>
                 <SelectItem value="Em Tratativa">Em Tratativa</SelectItem>
-                <SelectItem value="Resolvido">Resolvido</SelectItem>
+                <SelectItem value="Resolvido">Encerrar Chamado</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {showRetornoSinal && (
-            <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-4">
-              <Label className="font-semibold">Data e hora do retorno do sinal *</Label>
-              <Input
-                type="datetime-local"
-                value={dataRetornoSinal}
-                onChange={(e) => setDataRetornoSinal(e.target.value)}
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                Informe quando o sinal da placa retornou. Este valor será usado para calcular o tempo total travado.
-              </p>
+          {isEncerramento && (
+            <div className="space-y-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+              <Label className="font-semibold text-base">Opções de Encerramento</Label>
+              <RadioGroup value={encerrarOpcao} onValueChange={(v) => setEncerrarOpcao(v as EncerrarOpcao)} className="space-y-3">
+                <div className="flex items-start space-x-3 rounded-md border p-3 bg-background">
+                  <RadioGroupItem value="destravou" id="destravou" className="mt-0.5" />
+                  <div>
+                    <Label htmlFor="destravou" className="font-medium cursor-pointer">Placa destravou</Label>
+                    <p className="text-xs text-muted-foreground">Informar data e hora que o sinal voltou</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3 rounded-md border p-3 bg-background">
+                  <RadioGroupItem value="continua_travado" id="continua_travado" className="mt-0.5" />
+                  <div>
+                    <Label htmlFor="continua_travado" className="font-medium cursor-pointer">Continua travado</Label>
+                    <p className="text-xs text-muted-foreground">Encerrar mesmo com a placa ainda travada</p>
+                  </div>
+                </div>
+                <div className="flex items-start space-x-3 rounded-md border p-3 bg-background">
+                  <RadioGroupItem value="sem_cobertura" id="sem_cobertura" className="mt-0.5" />
+                  <div>
+                    <Label htmlFor="sem_cobertura" className="font-medium cursor-pointer">Placa sem cobertura</Label>
+                    <p className="text-xs text-muted-foreground">Região ou placa sem cobertura de sinal</p>
+                  </div>
+                </div>
+              </RadioGroup>
+
+              {encerrarOpcao === "destravou" && (
+                <div className="space-y-2 pt-2">
+                  <Label className="font-semibold">Data e hora que destravou *</Label>
+                  <Input
+                    type="datetime-local"
+                    value={dataRetornoSinal}
+                    onChange={(e) => setDataRetornoSinal(e.target.value)}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Será usado para calcular o tempo total travado.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 
@@ -207,9 +247,11 @@ export default function DetalhesChamado() {
           </div>
           <div className="flex gap-3">
             <Button onClick={handleSave} disabled={saving}>{saving ? "Salvando..." : "Salvar Alterações"}</Button>
-            <Button variant="outline" onClick={handleVoltouTravar} disabled={saving}>
-              <RotateCcw className="mr-2 h-4 w-4" />Placa Voltou a Travar
-            </Button>
+            {chamadoFinalizado && (
+              <Button variant="outline" onClick={handleVoltouTravar} disabled={saving}>
+                <RotateCcw className="mr-2 h-4 w-4" />Placa Voltou a Travar
+              </Button>
+            )}
           </div>
         </CardContent>
       </Card>
