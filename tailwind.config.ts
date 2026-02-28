@@ -61,6 +61,8 @@ export default {
           open: "hsl(var(--status-open))",
           "in-progress": "hsl(var(--status-in-progress))",
           resolved: "hsl(var(--status-resolved))",
+          locked: "hsl(var(--status-locked))",
+          nocoverage: "hsl(var(--status-nocoverage))",
         },
       },
       borderRadius: {

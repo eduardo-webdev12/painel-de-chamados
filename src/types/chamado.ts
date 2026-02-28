@@ -1,4 +1,9 @@
-export type StatusChamado = "Aberto" | "Em Tratativa" | "Resolvido";
+export type StatusChamado =
+  | "Aberto"
+  | "Em Tratativa"
+  | "Resolvido"
+  | "Encerrado — Continua travado"
+  | "Encerrado — Sem cobertura";
 
 export interface Chamado {
   id: string;

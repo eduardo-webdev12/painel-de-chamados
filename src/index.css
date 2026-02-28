@@ -35,9 +35,11 @@
     --radius: 0.5rem;
 
     /* Status colors */
-    --status-open: 45 93% 47%;
-    --status-in-progress: 215 80% 50%;
+    --status-open: 0 72% 51%;
+    --status-in-progress: 45 93% 47%;
     --status-resolved: 142 71% 45%;
+    --status-locked: 25 95% 53%;
+    --status-nocoverage: 220 10% 50%;
 
     /* Sidebar */
     --sidebar-background: 215 35% 18%;
