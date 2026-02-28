@@ -56,6 +56,8 @@ export default function Chamados() {
                 <SelectItem value="Aberto">Aberto</SelectItem>
                 <SelectItem value="Em Tratativa">Em Tratativa</SelectItem>
                 <SelectItem value="Resolvido">Resolvido</SelectItem>
+                <SelectItem value="Encerrado — Continua travado">Continua Travado</SelectItem>
+                <SelectItem value="Encerrado — Sem cobertura">Sem Cobertura</SelectItem>
               </SelectContent>
             </Select>
             <Select value={filtroTransportadora} onValueChange={setFiltroTransportadora}>
