@@ -13,15 +13,24 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowLeft, RotateCcw } from "lucide-react";
+import { ArrowLeft, RotateCcw, History } from "lucide-react";
 import type { ChamadoDB } from "@/hooks/useChamados";
 
 type EncerrarOpcao = "destravou" | "continua_travado" | "sem_cobertura";
 
+interface HistoricoItem {
+  id: string;
+  acao: string;
+  detalhes: string | null;
+  usuario_nome: string | null;
+  usuario_cargo: string | null;
+  created_at: string;
+}
+
 export default function DetalhesChamado() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { profile } = useAuth();
+  const { user, profile } = useAuth();
   const [chamado, setChamado] = useState<ChamadoDB | null>(null);
   const [observacao, setObservacao] = useState("");
   const [status, setStatus] = useState("Aberto");
@@ -29,18 +38,39 @@ export default function DetalhesChamado() {
   const [encerrarOpcao, setEncerrarOpcao] = useState<EncerrarOpcao>("destravou");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [historico, setHistorico] = useState<HistoricoItem[]>([]);
 
   useEffect(() => {
     if (!id) return;
-    supabase.from("chamados").select("*").eq("id", id).maybeSingle().then(({ data }) => {
-      if (data) {
-        setChamado(data);
-        setObservacao(data.observacao || "");
-        setStatus(data.status);
+    // Fetch chamado and historico in parallel
+    Promise.all([
+      supabase.from("chamados").select("*").eq("id", id).maybeSingle(),
+      supabase.from("chamado_historico").select("*").eq("chamado_id", id).order("created_at", { ascending: false }),
+    ]).then(([chamadoRes, histRes]) => {
+      if (chamadoRes.data) {
+        setChamado(chamadoRes.data);
+        setObservacao(chamadoRes.data.observacao || "");
+        setStatus(chamadoRes.data.status);
       }
+      setHistorico((histRes.data as HistoricoItem[]) || []);
       setLoading(false);
     });
   }, [id]);
+
+  const addHistorico = async (acao: string, detalhes?: string) => {
+    if (!id) return;
+    const entry = {
+      chamado_id: id,
+      acao,
+      detalhes: detalhes || null,
+      usuario_nome: profile?.nome || null,
+      usuario_email: profile?.email || null,
+      usuario_cargo: profile?.cargo || null,
+      usuario_id: user?.id || null,
+    };
+    const { data } = await supabase.from("chamado_historico").insert(entry).select().single();
+    if (data) setHistorico((prev) => [data as HistoricoItem, ...prev]);
+  };
 
   const tempoAtual = useMemo(() => {
     if (!chamado || !chamado.hora_travou || chamado.status.startsWith("Resolvido") || chamado.status.startsWith("Encerrado")) return chamado?.tempo_travada || "—";
@@ -69,6 +99,8 @@ export default function DetalhesChamado() {
 
     setSaving(true);
     const updates: Record<string, unknown> = { observacao };
+    let historicoAcao = "";
+    let historicoDetalhes = "";
 
     if (isEncerramento) {
       updates.data_resolucao = new Date().toISOString();
@@ -85,22 +117,41 @@ export default function DetalhesChamado() {
           const diff = differenceInMinutes(retornoDate, parseISO(chamado.hora_travou));
           updates.tempo_travada = diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
         }
+        historicoAcao = "Chamado encerrado — Resolvido";
+        historicoDetalhes = `Retorno do sinal: ${format(retornoDate, "dd/MM/yyyy HH:mm")}`;
       } else if (encerrarOpcao === "continua_travado") {
         updates.status = "Encerrado — Continua travado";
+        historicoAcao = "Chamado encerrado — Continua travado";
       } else if (encerrarOpcao === "sem_cobertura") {
         updates.status = "Encerrado — Sem cobertura";
+        historicoAcao = "Chamado encerrado — Sem cobertura";
       }
     } else {
       updates.status = status;
+      if (status !== chamado.status) {
+        historicoAcao = "Status alterado";
+        historicoDetalhes = `${chamado.status} → ${status}`;
+      }
+    }
+
+    // Check if observacao changed
+    if (observacao !== (chamado.observacao || "") && !historicoAcao) {
+      historicoAcao = "Observação atualizada";
     }
 
     const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
+
+    if (historicoAcao) {
+      await addHistorico(historicoAcao, historicoDetalhes || undefined);
+    }
+
     setChamado({ ...chamado, ...updates } as ChamadoDB);
+    setSaving(false);
     toast({ title: "Chamado atualizado" });
   };
 
@@ -119,12 +170,16 @@ export default function DetalhesChamado() {
       data_hora_retorno_sinal: null,
     };
     const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
-    setSaving(false);
     if (error) {
+      setSaving(false);
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       return;
     }
+
+    await addHistorico("Placa voltou a travar", `Recorrência: ${chamado.contagem_recorrencia + 1}x`);
+
     setChamado({ ...chamado, ...updates } as ChamadoDB);
+    setSaving(false);
     toast({ title: "Placa marcada como travada novamente", description: `Recorrência: ${chamado.contagem_recorrencia + 1}x` });
   };
 
@@ -253,6 +308,41 @@ export default function DetalhesChamado() {
               </Button>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Histórico de Interações */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <History className="h-5 w-5" />
+            Histórico de Interações
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {historico.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">Nenhum registro de interação ainda.</p>
+          ) : (
+            <div className="space-y-3">
+              {historico.map((h) => (
+                <div key={h.id} className="flex gap-3 border-b pb-3 last:border-0">
+                  <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between gap-2">
+                      <p className="text-sm font-medium">{h.acao}</p>
+                      <span className="shrink-0 text-xs text-muted-foreground">
+                        {format(parseISO(h.created_at), "dd/MM/yy HH:mm")}
+                      </span>
+                    </div>
+                    {h.detalhes && <p className="text-xs text-muted-foreground mt-0.5">{h.detalhes}</p>}
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      por {h.usuario_nome || "Sistema"}{h.usuario_cargo ? ` (${h.usuario_cargo})` : ""}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

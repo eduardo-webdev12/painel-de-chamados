@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      chamado_historico: {
+        Row: {
+          acao: string
+          chamado_id: string
+          created_at: string
+          detalhes: string | null
+          id: string
+          usuario_cargo: string | null
+          usuario_email: string | null
+          usuario_id: string | null
+          usuario_nome: string | null
+        }
+        Insert: {
+          acao: string
+          chamado_id: string
+          created_at?: string
+          detalhes?: string | null
+          id?: string
+          usuario_cargo?: string | null
+          usuario_email?: string | null
+          usuario_id?: string | null
+          usuario_nome?: string | null
+        }
+        Update: {
+          acao?: string
+          chamado_id?: string
+          created_at?: string
+          detalhes?: string | null
+          id?: string
+          usuario_cargo?: string | null
+          usuario_email?: string | null
+          usuario_id?: string | null
+          usuario_nome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chamado_historico_chamado_id_fkey"
+            columns: ["chamado_id"]
+            isOneToOne: false
+            referencedRelation: "chamados"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chamados: {
         Row: {
           contagem_recorrencia: number
