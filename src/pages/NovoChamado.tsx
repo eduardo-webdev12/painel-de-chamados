@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,13 +8,81 @@ import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useChamados } from "@/hooks/useChamados";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
+function AutocompleteInput({
+  id,
+  placeholder,
+  value,
+  onChange,
+  suggestions,
+}: {
+  id: string;
+  placeholder: string;
+  value: string;
+  onChange: (val: string) => void;
+  suggestions: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  const filtered = useMemo(() => {
+    if (!value.trim()) return suggestions.slice(0, 8);
+    return suggestions.filter((s) => s.toLowerCase().includes(value.toLowerCase())).slice(0, 8);
+  }, [value, suggestions]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <Input
+        id={id}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => { setFocused(true); setOpen(true); }}
+        onBlur={() => setFocused(false)}
+        autoComplete="off"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg max-h-[180px] overflow-y-auto">
+          {filtered.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className="w-full px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(s);
+                setOpen(false);
+              }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function NovoChamado() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { chamados } = useChamados();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
     placa: "",
@@ -25,6 +93,10 @@ export default function NovoChamado() {
     horaTravou: "",
     recorrente: false,
   });
+
+  // Build suggestion lists from existing data
+  const transportadoraSuggestions = useMemo(() => [...new Set(chamados.map((c) => c.transportadora))].sort(), [chamados]);
+  const tecnologiaSuggestions = useMemo(() => [...new Set(chamados.map((c) => c.tecnologia))].sort(), [chamados]);
 
   const update = (field: string, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -44,7 +116,7 @@ export default function NovoChamado() {
     const diffMin = Math.round(diffMs / 60000);
     const tempoTravada = diffMin < 60 ? `${diffMin} min` : `${(diffMin / 60).toFixed(1)} h`;
 
-    const { error } = await supabase.from("chamados").insert({
+    const { data: inserted, error } = await supabase.from("chamados").insert({
       placa: form.placa.toUpperCase(),
       transportadora: form.transportadora,
       tecnologia: form.tecnologia,
@@ -58,14 +130,28 @@ export default function NovoChamado() {
       created_by_name: profile?.nome || null,
       created_by_email: profile?.email || null,
       created_by_role: profile?.cargo || null,
-    });
+    }).select("id").single();
 
-    setLoading(false);
     if (error) {
+      setLoading(false);
       toast({ title: "Erro ao criar chamado", description: error.message, variant: "destructive" });
       return;
     }
 
+    // Add historico entry
+    if (inserted?.id) {
+      await supabase.from("chamado_historico").insert({
+        chamado_id: inserted.id,
+        acao: "Chamado criado",
+        detalhes: `Placa: ${form.placa.toUpperCase()} — ${form.transportadora}`,
+        usuario_nome: profile?.nome || null,
+        usuario_email: profile?.email || null,
+        usuario_cargo: profile?.cargo || null,
+        usuario_id: user?.id || null,
+      });
+    }
+
+    setLoading(false);
     toast({ title: "Chamado criado", description: `Chamado para placa ${form.placa.toUpperCase()} registrado.` });
     navigate("/chamados");
   };
@@ -93,14 +179,26 @@ export default function NovoChamado() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="transportadora">Transportadora *</Label>
-                <Input id="transportadora" placeholder="Nome da transportadora" value={form.transportadora} onChange={(e) => update("transportadora", e.target.value)} />
+                <AutocompleteInput
+                  id="transportadora"
+                  placeholder="Nome da transportadora"
+                  value={form.transportadora}
+                  onChange={(v) => update("transportadora", v)}
+                  suggestions={transportadoraSuggestions}
+                />
               </div>
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="tecnologia">Tecnologia / Rastreador *</Label>
-                <Input id="tecnologia" placeholder="Ex: Sascar, Autotrac..." value={form.tecnologia} onChange={(e) => update("tecnologia", e.target.value)} />
+                <AutocompleteInput
+                  id="tecnologia"
+                  placeholder="Ex: Sascar, Autotrac..."
+                  value={form.tecnologia}
+                  onChange={(v) => update("tecnologia", v)}
+                  suggestions={tecnologiaSuggestions}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="horaTravou">Hora que a placa travou</Label>

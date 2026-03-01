@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -10,12 +10,12 @@ import { useChamados, ChamadoDB } from "@/hooks/useChamados";
 import {
   PlusCircle, AlertTriangle, Clock, CheckCircle2, Inbox, RotateCcw,
   TrendingUp, Percent, Truck, Cpu, User, CalendarDays, Timer,
-  ShieldOff, Lock
+  ShieldOff, Lock, Bell
 } from "lucide-react";
 import { format, isToday, isYesterday, subDays, parseISO, isAfter, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, Legend
 } from "recharts";
 
@@ -28,6 +28,24 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 type Periodo = "hoje" | "ontem" | "7dias" | "30dias" | "custom";
+
+// Alert thresholds (configurable)
+const ALERT_THRESHOLDS = {
+  emTratativa: 5,
+  continuaTravado: 3,
+  abertos: 10,
+};
+
+// Custom tooltip for bar charts
+const CustomBarTooltip = ({ active, payload, label, labelKey }: any) => {
+  if (!active || !payload?.length) return null;
+  return (
+    <div className="rounded-lg border bg-background p-3 shadow-md">
+      <p className="text-sm font-semibold">{label || payload[0]?.payload?.[labelKey]}</p>
+      <p className="text-sm text-muted-foreground">Ocorrências: <span className="font-bold text-foreground">{payload[0]?.value}</span></p>
+    </div>
+  );
+};
 
 export default function Dashboard() {
   const { chamados, loading } = useChamados();
@@ -67,7 +85,6 @@ export default function Dashboard() {
     const resolvidosHoje = chamados.filter((c) => c.status === "Resolvido" && c.data_resolucao && isToday(parseISO(c.data_resolucao))).length;
     const chamadosHoje = chamados.filter((c) => isToday(parseISO(c.data_abertura))).length;
 
-    // Tempo médio de resolução
     const comResolucao = filtrados.filter((c) => c.status === "Resolvido" && c.data_resolucao);
     let tempoMedioRes = "—";
     if (comResolucao.length > 0) {
@@ -77,7 +94,6 @@ export default function Dashboard() {
       tempoMedioRes = totalMin < 60 ? `${Math.round(totalMin)} min` : `${(totalMin / 60).toFixed(1)} h`;
     }
 
-    // Tempo médio em aberto
     const abertosAtivos = filtrados.filter((c) => c.status === "Aberto" || c.status === "Em Tratativa");
     let tempoMedioAberto = "—";
     if (abertosAtivos.length > 0) {
@@ -87,22 +103,18 @@ export default function Dashboard() {
       tempoMedioAberto = totalMin < 60 ? `${Math.round(totalMin)} min` : `${(totalMin / 60).toFixed(1)} h`;
     }
 
-    // Top placa
     const placaCount: Record<string, number> = {};
     filtrados.forEach((c) => { placaCount[c.placa] = (placaCount[c.placa] || 0) + 1; });
     const topPlaca = Object.entries(placaCount).sort((a, b) => b[1] - a[1])[0];
 
-    // Top transportadora
     const transpCount: Record<string, number> = {};
     filtrados.forEach((c) => { transpCount[c.transportadora] = (transpCount[c.transportadora] || 0) + 1; });
     const topTransp = Object.entries(transpCount).sort((a, b) => b[1] - a[1])[0];
 
-    // Top tecnologia
     const tecCount: Record<string, number> = {};
     filtrados.forEach((c) => { tecCount[c.tecnologia] = (tecCount[c.tecnologia] || 0) + 1; });
     const topTec = Object.entries(tecCount).sort((a, b) => b[1] - a[1])[0];
 
-    // Top operador (quem mais finalizou)
     const opCount: Record<string, number> = {};
     filtrados.forEach((c) => {
       if (c.finalizado_por_nome) opCount[c.finalizado_por_nome] = (opCount[c.finalizado_por_nome] || 0) + 1;
@@ -124,28 +136,40 @@ export default function Dashboard() {
     };
   }, [filtrados, chamados]);
 
-  // Chart: top 10 placas
+  // Alert logic
+  const alerts = useMemo(() => {
+    const list: { message: string; level: "warn" | "critical" }[] = [];
+    if (metrics.emTratativa >= ALERT_THRESHOLDS.emTratativa) {
+      list.push({ message: `${metrics.emTratativa} chamados em tratativa (limite: ${ALERT_THRESHOLDS.emTratativa})`, level: "warn" });
+    }
+    if (metrics.continuaTravado >= ALERT_THRESHOLDS.continuaTravado) {
+      list.push({ message: `${metrics.continuaTravado} chamados "Continua Travado" (limite: ${ALERT_THRESHOLDS.continuaTravado})`, level: "critical" });
+    }
+    if (metrics.abertos >= ALERT_THRESHOLDS.abertos) {
+      list.push({ message: `${metrics.abertos} chamados abertos (limite: ${ALERT_THRESHOLDS.abertos})`, level: "critical" });
+    }
+    return list;
+  }, [metrics]);
+
+  // Chart data
   const placasChart = useMemo(() => {
     const count: Record<string, number> = {};
     filtrados.forEach((c) => { count[c.placa] = (count[c.placa] || 0) + 1; });
     return Object.entries(count).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([placa, total]) => ({ placa, total }));
   }, [filtrados]);
 
-  // Chart: top transportadoras
   const transpChart = useMemo(() => {
     const count: Record<string, number> = {};
     filtrados.forEach((c) => { count[c.transportadora] = (count[c.transportadora] || 0) + 1; });
     return Object.entries(count).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, total]) => ({ name, total }));
   }, [filtrados]);
 
-  // Chart: status distribution
   const statusChart = useMemo(() => {
     const counts: Record<string, number> = {};
     filtrados.forEach((c) => { counts[c.status] = (counts[c.status] || 0) + 1; });
     return Object.entries(counts).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value }));
   }, [filtrados]);
 
-  // Chart: evolução
   const evolucaoChart = useMemo(() => {
     const byDay: Record<string, number> = {};
     filtrados.forEach((c) => {
@@ -155,7 +179,6 @@ export default function Dashboard() {
     return Object.entries(byDay).map(([dia, total]) => ({ dia, total }));
   }, [filtrados]);
 
-  // Chart: desempenho por operador
   const operadorChart = useMemo(() => {
     const count: Record<string, number> = {};
     filtrados.forEach((c) => {
@@ -164,22 +187,35 @@ export default function Dashboard() {
     return Object.entries(count).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([name, total]) => ({ name, total }));
   }, [filtrados]);
 
+  // Click handlers for chart bars
+  const handlePlacaClick = (data: any) => {
+    if (data?.placa) {
+      navigate(`/chamados?placa=${encodeURIComponent(data.placa)}`);
+    }
+  };
+
+  const handleTranspClick = (data: any) => {
+    if (data?.name) {
+      navigate(`/chamados?transportadora=${encodeURIComponent(data.name)}`);
+    }
+  };
+
   const kpiCards = [
-    { title: "Chamados Hoje", value: metrics.chamadosHoje, icon: CalendarDays, accent: "text-primary" },
-    { title: "Em Aberto", value: metrics.abertos, icon: AlertTriangle, accent: "text-status-open" },
-    { title: "Em Tratativa", value: metrics.emTratativa, icon: Clock, accent: "text-status-in-progress" },
-    { title: "Resolvidos Hoje", value: metrics.resolvidosHoje, icon: CheckCircle2, accent: "text-status-resolved" },
-    { title: "Continua Travado", value: metrics.continuaTravado, icon: Lock, accent: "text-status-locked" },
-    { title: "Sem Cobertura", value: metrics.semCobertura, icon: ShieldOff, accent: "text-status-nocoverage" },
-    { title: "Recorrentes", value: metrics.recorrentes, icon: RotateCcw, accent: "text-destructive" },
-    { title: "Tempo Médio Resolução", value: metrics.tempoMedioRes, icon: Timer, accent: "text-muted-foreground" },
-    { title: "Tempo Médio Aberto", value: metrics.tempoMedioAberto, icon: TrendingUp, accent: "text-muted-foreground" },
-    { title: "Placa + Ocorrências", value: metrics.topPlaca, icon: Inbox, accent: "text-primary" },
-    { title: "Top Transportadora", value: metrics.topTransp, icon: Truck, accent: "text-primary" },
-    { title: "Tecnologia + Falhas", value: metrics.topTec, icon: Cpu, accent: "text-primary" },
-    { title: "Top Operador", value: metrics.topOp, icon: User, accent: "text-primary" },
-    { title: "Taxa Resolução", value: `${metrics.taxaResolucao}%`, icon: Percent, accent: "text-status-resolved" },
-    { title: "Taxa Recorrência", value: `${metrics.taxaRecorrencia}%`, icon: Percent, accent: "text-destructive" },
+    { title: "Chamados Hoje", value: metrics.chamadosHoje, icon: CalendarDays, accent: "text-primary", alert: false },
+    { title: "Em Aberto", value: metrics.abertos, icon: AlertTriangle, accent: "text-status-open", alert: metrics.abertos >= ALERT_THRESHOLDS.abertos },
+    { title: "Em Tratativa", value: metrics.emTratativa, icon: Clock, accent: "text-status-in-progress", alert: metrics.emTratativa >= ALERT_THRESHOLDS.emTratativa },
+    { title: "Resolvidos Hoje", value: metrics.resolvidosHoje, icon: CheckCircle2, accent: "text-status-resolved", alert: false },
+    { title: "Continua Travado", value: metrics.continuaTravado, icon: Lock, accent: "text-status-locked", alert: metrics.continuaTravado >= ALERT_THRESHOLDS.continuaTravado },
+    { title: "Sem Cobertura", value: metrics.semCobertura, icon: ShieldOff, accent: "text-status-nocoverage", alert: false },
+    { title: "Recorrentes", value: metrics.recorrentes, icon: RotateCcw, accent: "text-destructive", alert: false },
+    { title: "Tempo Médio Resolução", value: metrics.tempoMedioRes, icon: Timer, accent: "text-muted-foreground", alert: false },
+    { title: "Tempo Médio Aberto", value: metrics.tempoMedioAberto, icon: TrendingUp, accent: "text-muted-foreground", alert: false },
+    { title: "Placa + Ocorrências", value: metrics.topPlaca, icon: Inbox, accent: "text-primary", alert: false },
+    { title: "Top Transportadora", value: metrics.topTransp, icon: Truck, accent: "text-primary", alert: false },
+    { title: "Tecnologia + Falhas", value: metrics.topTec, icon: Cpu, accent: "text-primary", alert: false },
+    { title: "Top Operador", value: metrics.topOp, icon: User, accent: "text-primary", alert: false },
+    { title: "Taxa Resolução", value: `${metrics.taxaResolucao}%`, icon: Percent, accent: "text-status-resolved", alert: false },
+    { title: "Taxa Recorrência", value: `${metrics.taxaRecorrencia}%`, icon: Percent, accent: "text-destructive", alert: false },
   ];
 
   if (loading) return <div className="flex items-center justify-center py-20"><p className="text-muted-foreground">Carregando...</p></div>;
@@ -216,13 +252,38 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Alerts Banner */}
+      {alerts.length > 0 && (
+        <div className="space-y-2">
+          {alerts.map((alert, i) => (
+            <div
+              key={i}
+              className={`flex items-center gap-3 rounded-lg border p-3 text-sm font-medium ${
+                alert.level === "critical"
+                  ? "border-destructive/50 bg-destructive/10 text-destructive"
+                  : "border-status-in-progress/50 bg-status-in-progress/10 text-status-in-progress"
+              }`}
+            >
+              <Bell className="h-4 w-4 shrink-0" />
+              <span>{alert.message}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* KPI Cards */}
       <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-5">
         {kpiCards.map((card) => (
-          <Card key={card.title}>
+          <Card
+            key={card.title}
+            className={card.alert ? "border-destructive/50 ring-1 ring-destructive/30 animate-pulse" : ""}
+          >
             <CardHeader className="flex flex-row items-center justify-between pb-1 space-y-0 p-4">
               <CardTitle className="text-[11px] font-medium text-muted-foreground leading-tight">{card.title}</CardTitle>
-              <card.icon className={`h-4 w-4 shrink-0 ${card.accent}`} />
+              <div className="flex items-center gap-1">
+                {card.alert && <Bell className="h-3 w-3 text-destructive" />}
+                <card.icon className={`h-4 w-4 shrink-0 ${card.accent}`} />
+              </div>
             </CardHeader>
             <CardContent className="p-4 pt-0">
               <div className="text-lg font-bold truncate">{card.value}</div>
@@ -242,8 +303,14 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" allowDecimals={false} />
                   <YAxis type="category" dataKey="placa" width={85} fontSize={11} />
-                  <Tooltip />
-                  <Bar dataKey="total" fill="hsl(0, 72%, 51%)" radius={[0, 4, 4, 0]} />
+                  <RechartsTooltip content={<CustomBarTooltip labelKey="placa" />} />
+                  <Bar
+                    dataKey="total"
+                    fill="hsl(0, 72%, 51%)"
+                    radius={[0, 4, 4, 0]}
+                    cursor="pointer"
+                    onClick={(data) => handlePlacaClick(data)}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -259,8 +326,14 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" allowDecimals={false} />
                   <YAxis type="category" dataKey="name" width={120} fontSize={11} />
-                  <Tooltip />
-                  <Bar dataKey="total" fill="hsl(215, 80%, 50%)" radius={[0, 4, 4, 0]} />
+                  <RechartsTooltip content={<CustomBarTooltip labelKey="name" />} />
+                  <Bar
+                    dataKey="total"
+                    fill="hsl(215, 80%, 50%)"
+                    radius={[0, 4, 4, 0]}
+                    cursor="pointer"
+                    onClick={(data) => handleTranspClick(data)}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -280,7 +353,7 @@ export default function Dashboard() {
                     {statusChart.map((entry) => <Cell key={entry.name} fill={STATUS_COLORS[entry.name] || "#888"} />)}
                   </Pie>
                   <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Tooltip />
+                  <RechartsTooltip />
                 </PieChart>
               </ResponsiveContainer>
             )}
@@ -296,7 +369,7 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="dia" fontSize={11} />
                   <YAxis allowDecimals={false} />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Line type="monotone" dataKey="total" stroke="hsl(215, 80%, 50%)" strokeWidth={2} dot={{ r: 3 }} />
                 </LineChart>
               </ResponsiveContainer>
@@ -313,7 +386,7 @@ export default function Dashboard() {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis type="number" allowDecimals={false} />
                   <YAxis type="category" dataKey="name" width={100} fontSize={11} />
-                  <Tooltip />
+                  <RechartsTooltip />
                   <Bar dataKey="total" fill="hsl(142, 71%, 45%)" radius={[0, 4, 4, 0]} />
                 </BarChart>
               </ResponsiveContainer>
