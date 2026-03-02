@@ -7,13 +7,17 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger
+} from "@/components/ui/alert-dialog";
 import { StatusBadge } from "@/components/StatusBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowLeft, RotateCcw, History } from "lucide-react";
+import { ArrowLeft, RotateCcw, History, Trash2 } from "lucide-react";
 import type { ChamadoDB } from "@/hooks/useChamados";
 
 type EncerrarOpcao = "destravou" | "continua_travado" | "sem_cobertura";
@@ -38,11 +42,13 @@ export default function DetalhesChamado() {
   const [encerrarOpcao, setEncerrarOpcao] = useState<EncerrarOpcao>("destravou");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
+
+  const isAdmin = profile?.role === "admin";
 
   useEffect(() => {
     if (!id) return;
-    // Fetch chamado and historico in parallel
     Promise.all([
       supabase.from("chamados").select("*").eq("id", id).maybeSingle(),
       supabase.from("chamado_historico").select("*").eq("chamado_id", id).order("created_at", { ascending: false }),
@@ -59,21 +65,25 @@ export default function DetalhesChamado() {
 
   const addHistorico = async (acao: string, detalhes?: string) => {
     if (!id) return;
-    const entry = {
-      chamado_id: id,
-      acao,
-      detalhes: detalhes || null,
-      usuario_nome: profile?.nome || null,
-      usuario_email: profile?.email || null,
-      usuario_cargo: profile?.cargo || null,
-      usuario_id: user?.id || null,
-    };
-    const { data } = await supabase.from("chamado_historico").insert(entry).select().single();
-    if (data) setHistorico((prev) => [data as HistoricoItem, ...prev]);
+    try {
+      const entry = {
+        chamado_id: id,
+        acao,
+        detalhes: detalhes || null,
+        usuario_nome: profile?.nome || null,
+        usuario_email: profile?.email || null,
+        usuario_cargo: profile?.cargo || null,
+        usuario_id: user?.id || null,
+      };
+      const { data } = await supabase.from("chamado_historico").insert(entry).select().single();
+      if (data) setHistorico((prev) => [data as HistoricoItem, ...prev]);
+    } catch (e) {
+      console.error("Erro ao registrar histórico:", e);
+    }
   };
 
   const tempoAtual = useMemo(() => {
-    if (!chamado || !chamado.hora_travou || chamado.status.startsWith("Resolvido") || chamado.status.startsWith("Encerrado")) return chamado?.tempo_travada || "—";
+    if (!chamado || !chamado.hora_travou || chamado.status === "Resolvido" || chamado.status.startsWith("Encerrado")) return chamado?.tempo_travada || "—";
     const diff = differenceInMinutes(new Date(), parseISO(chamado.hora_travou));
     return diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
   }, [chamado]);
@@ -89,98 +99,144 @@ export default function DetalhesChamado() {
     );
   }
 
-  const isEncerramento = status === "Resolvido" && !chamado.status.startsWith("Resolvido") && !chamado.status.startsWith("Encerrado");
+  const chamadoFinalizado = chamado.status === "Resolvido" || chamado.status.startsWith("Encerrado");
+  const isEncerramento = status === "Resolvido" && !chamadoFinalizado;
+
+  const handleStatusChange = (newStatus: string) => {
+    setStatus(newStatus);
+    // Reset encerramento state when changing status
+    if (newStatus !== "Resolvido") {
+      setEncerrarOpcao("destravou");
+      setDataRetornoSinal("");
+    }
+  };
 
   const handleSave = async () => {
+    // Validation: only require date when "destravou" is selected
     if (isEncerramento && encerrarOpcao === "destravou" && !dataRetornoSinal) {
-      toast({ title: "Campo obrigatório", description: "Informe a data e hora que destravou.", variant: "destructive" });
+      toast({ title: "Campo obrigatório", description: "Informe a data e hora que a placa destravou.", variant: "destructive" });
       return;
     }
 
     setSaving(true);
-    const updates: Record<string, unknown> = { observacao };
-    let historicoAcao = "";
-    let historicoDetalhes = "";
+    try {
+      const updates: Record<string, unknown> = { observacao };
+      let historicoAcao = "";
+      let historicoDetalhes = "";
 
-    if (isEncerramento) {
-      updates.data_resolucao = new Date().toISOString();
-      updates.finalizado_por_nome = profile?.nome || null;
-      updates.finalizado_por_email = profile?.email || null;
-      updates.finalizado_por_cargo = profile?.cargo || null;
-      updates.finalizado_em = new Date().toISOString();
+      if (isEncerramento) {
+        const now = new Date().toISOString();
+        updates.data_resolucao = now;
+        updates.finalizado_por_nome = profile?.nome || null;
+        updates.finalizado_por_email = profile?.email || null;
+        updates.finalizado_por_cargo = profile?.cargo || null;
+        updates.finalizado_em = now;
 
-      if (encerrarOpcao === "destravou") {
-        updates.status = "Resolvido";
-        const retornoDate = new Date(dataRetornoSinal);
-        updates.data_hora_retorno_sinal = retornoDate.toISOString();
-        if (chamado.hora_travou) {
-          const diff = differenceInMinutes(retornoDate, parseISO(chamado.hora_travou));
-          updates.tempo_travada = diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
+        switch (encerrarOpcao) {
+          case "destravou": {
+            updates.status = "Resolvido";
+            const retornoDate = new Date(dataRetornoSinal);
+            updates.data_hora_retorno_sinal = retornoDate.toISOString();
+            if (chamado.hora_travou) {
+              const diff = differenceInMinutes(retornoDate, parseISO(chamado.hora_travou));
+              updates.tempo_travada = diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
+            }
+            historicoAcao = "Chamado encerrado — Resolvido";
+            historicoDetalhes = `Retorno do sinal: ${format(retornoDate, "dd/MM/yyyy HH:mm")}`;
+            break;
+          }
+          case "continua_travado": {
+            updates.status = "Encerrado — Continua travado";
+            updates.data_hora_retorno_sinal = null;
+            historicoAcao = "Chamado encerrado — Continua travado";
+            historicoDetalhes = "Placa permanece sem sinal";
+            break;
+          }
+          case "sem_cobertura": {
+            updates.status = "Encerrado — Sem cobertura";
+            updates.data_hora_retorno_sinal = null;
+            historicoAcao = "Chamado encerrado — Sem cobertura";
+            historicoDetalhes = "Região ou placa sem cobertura de sinal";
+            break;
+          }
         }
-        historicoAcao = "Chamado encerrado — Resolvido";
-        historicoDetalhes = `Retorno do sinal: ${format(retornoDate, "dd/MM/yyyy HH:mm")}`;
-      } else if (encerrarOpcao === "continua_travado") {
-        updates.status = "Encerrado — Continua travado";
-        historicoAcao = "Chamado encerrado — Continua travado";
-      } else if (encerrarOpcao === "sem_cobertura") {
-        updates.status = "Encerrado — Sem cobertura";
-        historicoAcao = "Chamado encerrado — Sem cobertura";
+      } else {
+        updates.status = status;
+        if (status !== chamado.status) {
+          historicoAcao = "Status alterado";
+          historicoDetalhes = `${chamado.status} → ${status}`;
+        }
       }
-    } else {
-      updates.status = status;
-      if (status !== chamado.status) {
-        historicoAcao = "Status alterado";
-        historicoDetalhes = `${chamado.status} → ${status}`;
+
+      if (observacao !== (chamado.observacao || "") && !historicoAcao) {
+        historicoAcao = "Observação atualizada";
       }
-    }
 
-    // Check if observacao changed
-    if (observacao !== (chamado.observacao || "") && !historicoAcao) {
-      historicoAcao = "Observação atualizada";
-    }
+      const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
+      if (error) {
+        toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
+        setSaving(false);
+        return;
+      }
 
-    const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
-    if (error) {
+      if (historicoAcao) {
+        await addHistorico(historicoAcao, historicoDetalhes || undefined);
+      }
+
+      setChamado({ ...chamado, ...updates } as ChamadoDB);
+      toast({ title: "Chamado atualizado com sucesso" });
+    } catch (err: any) {
+      toast({ title: "Erro inesperado", description: err?.message || "Tente novamente.", variant: "destructive" });
+    } finally {
       setSaving(false);
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      return;
     }
-
-    if (historicoAcao) {
-      await addHistorico(historicoAcao, historicoDetalhes || undefined);
-    }
-
-    setChamado({ ...chamado, ...updates } as ChamadoDB);
-    setSaving(false);
-    toast({ title: "Chamado atualizado" });
   };
 
   const handleVoltouTravar = async () => {
     setSaving(true);
-    const updates = {
-      status: "Aberto",
-      data_resolucao: null,
-      recorrente: true,
-      contagem_recorrencia: chamado.contagem_recorrencia + 1,
-      hora_travou: new Date().toISOString(),
-      finalizado_por_nome: null,
-      finalizado_por_email: null,
-      finalizado_por_cargo: null,
-      finalizado_em: null,
-      data_hora_retorno_sinal: null,
-    };
-    const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
-    if (error) {
+    try {
+      const updates = {
+        status: "Aberto",
+        data_resolucao: null,
+        recorrente: true,
+        contagem_recorrencia: chamado.contagem_recorrencia + 1,
+        hora_travou: new Date().toISOString(),
+        finalizado_por_nome: null,
+        finalizado_por_email: null,
+        finalizado_por_cargo: null,
+        finalizado_em: null,
+        data_hora_retorno_sinal: null,
+      };
+      const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
+      if (error) {
+        toast({ title: "Erro", description: error.message, variant: "destructive" });
+        return;
+      }
+      await addHistorico("Placa voltou a travar", `Recorrência: ${chamado.contagem_recorrencia + 1}x`);
+      setChamado({ ...chamado, ...updates } as ChamadoDB);
+      setStatus("Aberto");
+      toast({ title: "Placa marcada como travada novamente", description: `Recorrência: ${chamado.contagem_recorrencia + 1}x` });
+    } finally {
       setSaving(false);
-      toast({ title: "Erro", description: error.message, variant: "destructive" });
-      return;
     }
+  };
 
-    await addHistorico("Placa voltou a travar", `Recorrência: ${chamado.contagem_recorrencia + 1}x`);
-
-    setChamado({ ...chamado, ...updates } as ChamadoDB);
-    setSaving(false);
-    toast({ title: "Placa marcada como travada novamente", description: `Recorrência: ${chamado.contagem_recorrencia + 1}x` });
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await addHistorico("Chamado excluído", `Excluído por ${profile?.nome || "Admin"}`);
+      const { error } = await supabase.from("chamados").delete().eq("id", chamado.id);
+      if (error) {
+        toast({ title: "Erro ao excluir", description: error.message, variant: "destructive" });
+        return;
+      }
+      toast({ title: "Chamado excluído com sucesso" });
+      navigate("/chamados");
+    } catch (err: any) {
+      toast({ title: "Erro inesperado", description: err?.message || "Tente novamente.", variant: "destructive" });
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const infoRows = [
@@ -205,19 +261,44 @@ export default function DetalhesChamado() {
     ...(chamado.data_resolucao ? [{ label: "Data de Resolução", value: format(parseISO(chamado.data_resolucao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) }] : []),
   ];
 
-  const chamadoFinalizado = chamado.status === "Resolvido" || chamado.status.startsWith("Encerrado");
-
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-5 w-5" /></Button>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Chamado – {chamado.placa}</h1>
-          <div className="mt-1 flex items-center gap-2">
-            <StatusBadge status={chamado.status} />
-            {chamado.recorrente && <span className="text-xs text-destructive font-medium">Recorrente ({chamado.contagem_recorrencia}x)</span>}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}><ArrowLeft className="h-5 w-5" /></Button>
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Chamado – {chamado.placa}</h1>
+            <div className="mt-1 flex items-center gap-2">
+              <StatusBadge status={chamado.status} />
+              {chamado.recorrente && <span className="text-xs text-destructive font-medium">Recorrente ({chamado.contagem_recorrencia}x)</span>}
+            </div>
           </div>
         </div>
+        {isAdmin && (
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button variant="destructive" size="sm" disabled={deleting}>
+                <Trash2 className="mr-2 h-4 w-4" />
+                {deleting ? "Excluindo..." : "Excluir"}
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Esta ação é irreversível. O chamado da placa <strong>{chamado.placa}</strong> será
+                  excluído permanentemente do sistema, incluindo todo o histórico de interações.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  Excluir permanentemente
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        )}
       </div>
 
       <Card>
@@ -242,7 +323,7 @@ export default function DetalhesChamado() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Status</Label>
-            <Select value={status} onValueChange={setStatus} disabled={chamadoFinalizado}>
+            <Select value={status} onValueChange={handleStatusChange} disabled={chamadoFinalizado}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="Aberto">Aberto</SelectItem>
@@ -255,22 +336,30 @@ export default function DetalhesChamado() {
           {isEncerramento && (
             <div className="space-y-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
               <Label className="font-semibold text-base">Opções de Encerramento</Label>
-              <RadioGroup value={encerrarOpcao} onValueChange={(v) => setEncerrarOpcao(v as EncerrarOpcao)} className="space-y-3">
-                <div className="flex items-start space-x-3 rounded-md border p-3 bg-background">
+              <RadioGroup
+                value={encerrarOpcao}
+                onValueChange={(v) => {
+                  setEncerrarOpcao(v as EncerrarOpcao);
+                  // Clear date when switching away from destravou
+                  if (v !== "destravou") setDataRetornoSinal("");
+                }}
+                className="space-y-3"
+              >
+                <div className={`flex items-start space-x-3 rounded-md border p-3 transition-colors ${encerrarOpcao === "destravou" ? "bg-primary/10 border-primary/40" : "bg-background"}`}>
                   <RadioGroupItem value="destravou" id="destravou" className="mt-0.5" />
                   <div>
                     <Label htmlFor="destravou" className="font-medium cursor-pointer">Placa destravou</Label>
                     <p className="text-xs text-muted-foreground">Informar data e hora que o sinal voltou</p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-3 rounded-md border p-3 bg-background">
+                <div className={`flex items-start space-x-3 rounded-md border p-3 transition-colors ${encerrarOpcao === "continua_travado" ? "bg-status-locked/10 border-status-locked/40" : "bg-background"}`}>
                   <RadioGroupItem value="continua_travado" id="continua_travado" className="mt-0.5" />
                   <div>
                     <Label htmlFor="continua_travado" className="font-medium cursor-pointer">Continua travado</Label>
                     <p className="text-xs text-muted-foreground">Encerrar mesmo com a placa ainda travada</p>
                   </div>
                 </div>
-                <div className="flex items-start space-x-3 rounded-md border p-3 bg-background">
+                <div className={`flex items-start space-x-3 rounded-md border p-3 transition-colors ${encerrarOpcao === "sem_cobertura" ? "bg-muted border-muted-foreground/30" : "bg-background"}`}>
                   <RadioGroupItem value="sem_cobertura" id="sem_cobertura" className="mt-0.5" />
                   <div>
                     <Label htmlFor="sem_cobertura" className="font-medium cursor-pointer">Placa sem cobertura</Label>
@@ -286,12 +375,17 @@ export default function DetalhesChamado() {
                     type="datetime-local"
                     value={dataRetornoSinal}
                     onChange={(e) => setDataRetornoSinal(e.target.value)}
-                    required
                   />
                   <p className="text-xs text-muted-foreground">
                     Será usado para calcular o tempo total travado.
                   </p>
                 </div>
+              )}
+
+              {encerrarOpcao !== "destravou" && (
+                <p className="text-xs text-muted-foreground italic pt-1">
+                  ℹ️ O chamado será encerrado sem necessidade de informar data/hora de retorno.
+                </p>
               )}
             </div>
           )}
@@ -301,7 +395,9 @@ export default function DetalhesChamado() {
             <Textarea rows={4} value={observacao} onChange={(e) => setObservacao(e.target.value)} placeholder="Adicione ou edite as observações..." />
           </div>
           <div className="flex gap-3">
-            <Button onClick={handleSave} disabled={saving}>{saving ? "Salvando..." : "Salvar Alterações"}</Button>
+            <Button onClick={handleSave} disabled={saving || deleting}>
+              {saving ? "Salvando..." : "Salvar Alterações"}
+            </Button>
             {chamadoFinalizado && (
               <Button variant="outline" onClick={handleVoltouTravar} disabled={saving}>
                 <RotateCcw className="mr-2 h-4 w-4" />Placa Voltou a Travar
