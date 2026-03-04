@@ -209,6 +209,11 @@ export default function NovoChamado() {
             </div>
 
             <div className="space-y-2">
+              <Label htmlFor="dataPosicao">Data da posição (extração do sistema da tecnologia)</Label>
+              <Input id="dataPosicao" type="datetime-local" value={form.dataPosicao} onChange={(e) => update("dataPosicao", e.target.value)} />
+            </div>
+
+            <div className="space-y-2">
               <Label htmlFor="descricao">Descrição detalhada do problema *</Label>
               <Textarea id="descricao" placeholder="Descreva o problema encontrado..." rows={4} value={form.descricao} onChange={(e) => update("descricao", e.target.value)} />
             </div>
