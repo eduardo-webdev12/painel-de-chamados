@@ -34,11 +34,15 @@ export default function Relatorios() {
       "Finalizado em": c.finalizado_em ? format(parseISO(c.finalizado_em), "dd/MM/yyyy HH:mm") : "—",
       "Retorno do Sinal": c.data_hora_retorno_sinal ? format(parseISO(c.data_hora_retorno_sinal), "dd/MM/yyyy HH:mm") : "—",
       Recorrente: c.recorrente ? `Sim (${c.contagem_recorrencia}x)` : "Não",
+      "Hora que Travou": c.hora_travou ? format(parseISO(c.hora_travou), "dd/MM/yyyy HH:mm") : "—",
       "Tempo Travada": c.tempo_travada,
       "Data Abertura": format(parseISO(c.data_abertura), "dd/MM/yyyy HH:mm"),
       "Data Resolução": c.data_resolucao ? format(parseISO(c.data_resolucao), "dd/MM/yyyy HH:mm") : "—",
+      "Data da Posição": (c as any).data_posicao ? format(parseISO((c as any).data_posicao), "dd/MM/yyyy HH:mm") : "—",
       Descrição: c.descricao,
       Observação: c.observacao || "",
+      "Observação Técnica": (c as any).observacao_tecnica || "",
+      "Link Acompanhamento": (c as any).link_acompanhamento || "",
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
@@ -68,44 +72,119 @@ export default function Relatorios() {
     const { default: jsPDF } = await import("jspdf");
     const autoTable = (await import("jspdf-autotable")).default;
 
-    const doc = new jsPDF({ orientation: "landscape" });
+    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+    const pageW = doc.internal.pageSize.getWidth();
+    const now = new Date();
 
-    // Add logo
+    // === HEADER ===
+    // Logo - proportional, left-aligned
     try {
       const logoData = await loadLogoAsBase64();
-      doc.addImage(logoData, "PNG", 14, 8, 40, 15);
+      // Draw logo proportionally (max 35mm wide, ~13mm tall)
+      doc.addImage(logoData, "PNG", 14, 8, 35, 13);
     } catch {
       console.warn("Logo não carregado");
     }
 
-    doc.setFontSize(14);
-    doc.text("PLATAFORMA SAC VX INTEGRAÇÕES", 60, 16);
-    doc.setFontSize(10);
-    doc.text("Relatório de Chamados", 60, 22);
-    doc.setFontSize(8);
-    doc.text(`Gerado em ${format(new Date(), "dd/MM/yyyy HH:mm")} | ${filtrados.length} registros`, 14, 30);
+    // Company info - right of logo
+    doc.setFontSize(13);
+    doc.setFont("helvetica", "bold");
+    doc.text("VX INTEGRAÇÕES", 55, 13);
 
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text("PLATAFORMA SAC VX INTEGRAÇÕES", 55, 18);
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.text("Relatório de Posição", 55, 23);
+
+    // Horizontal line
+    doc.setDrawColor(30, 64, 124);
+    doc.setLineWidth(0.6);
+    doc.line(14, 26, pageW - 14, 26);
+
+    // Report metadata
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(80, 80, 80);
+    doc.text(`Data da extração: ${format(now, "dd/MM/yyyy 'às' HH:mm")}`, 14, 30);
+    doc.text(`Total de registros: ${filtrados.length}`, pageW / 2, 30, { align: "center" });
+    if (dataInicio || dataFim) {
+      doc.text(`Período: ${dataInicio || "—"} a ${dataFim || "—"}`, pageW - 14, 30, { align: "right" });
+    }
+    doc.setTextColor(0, 0, 0);
+
+    // === TABLE ===
     autoTable(doc, {
-      startY: 35,
-      head: [["Placa", "Transp.", "Tecnologia", "Status", "Criado por", "Cargo", "Finalizado por", "Cargo (Fin.)", "Retorno Sinal", "Tempo", "Abertura"]],
+      startY: 34,
+      head: [[
+        "Placa",
+        "Transportadora",
+        "Tecnologia",
+        "Status",
+        "Hora Travou",
+        "Tempo Travado",
+        "Abertura",
+        "Criado por",
+        "Finalizado por",
+        "Observações",
+      ]],
       body: filtrados.map((c) => [
         c.placa,
         c.transportadora,
         c.tecnologia,
         c.status,
-        c.created_by_name || "—",
-        c.created_by_role || "—",
-        c.finalizado_por_nome || "—",
-        c.finalizado_por_cargo || "—",
-        c.data_hora_retorno_sinal ? format(parseISO(c.data_hora_retorno_sinal), "dd/MM/yy HH:mm") : "—",
+        c.hora_travou ? format(parseISO(c.hora_travou), "dd/MM/yy HH:mm") : "—",
         c.tempo_travada,
         format(parseISO(c.data_abertura), "dd/MM/yy HH:mm"),
+        c.created_by_name || "—",
+        c.finalizado_por_nome || "—",
+        c.observacao ? c.observacao.substring(0, 40) : "",
       ]),
-      styles: { fontSize: 7 },
-      headStyles: { fillColor: [30, 64, 124] },
+      styles: {
+        fontSize: 6.5,
+        cellPadding: 2,
+        lineColor: [200, 200, 200],
+        lineWidth: 0.2,
+      },
+      headStyles: {
+        fillColor: [30, 64, 124],
+        textColor: [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: 7,
+        halign: "center",
+      },
+      alternateRowStyles: {
+        fillColor: [245, 247, 250],
+      },
+      columnStyles: {
+        0: { cellWidth: 20, halign: "center" },
+        1: { cellWidth: 30 },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 28 },
+        4: { cellWidth: 22, halign: "center" },
+        5: { cellWidth: 18, halign: "center" },
+        6: { cellWidth: 22, halign: "center" },
+        7: { cellWidth: 25 },
+        8: { cellWidth: 25 },
+        9: { cellWidth: "auto" },
+      },
+      didDrawPage: (data: any) => {
+        // Footer
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        doc.setFontSize(7);
+        doc.setTextColor(120, 120, 120);
+        doc.text(
+          `Página ${data.pageNumber} de ${pageCount} — Plataforma SAC VX Integrações`,
+          pageW / 2,
+          doc.internal.pageSize.getHeight() - 8,
+          { align: "center" }
+        );
+      },
     });
 
-    doc.save(`relatorio-chamados-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+    doc.save(`relatorio-posicao-${format(now, "yyyy-MM-dd")}.pdf`);
     toast({ title: "PDF exportado com sucesso" });
   };
 
@@ -115,7 +194,7 @@ export default function Relatorios() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">Relatórios</h1>
-        <p className="text-sm text-muted-foreground">Exporte os dados dos chamados em Excel ou PDF</p>
+        <p className="text-sm text-muted-foreground">Exporte os dados dos chamados em Excel ou PDF (Relatório de Posição)</p>
       </div>
 
       <Card>
@@ -156,8 +235,8 @@ export default function Relatorios() {
               <FileText className="h-6 w-6 text-red-600" />
             </div>
             <div>
-              <h3 className="font-semibold">Exportar PDF</h3>
-              <p className="text-sm text-muted-foreground">Relatório profissional em PDF</p>
+              <h3 className="font-semibold">Exportar PDF — Relatório de Posição</h3>
+              <p className="text-sm text-muted-foreground">Relatório corporativo com logo e padrão oficial</p>
             </div>
           </CardContent>
         </Card>

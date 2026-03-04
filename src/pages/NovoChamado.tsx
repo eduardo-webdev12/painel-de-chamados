@@ -91,6 +91,7 @@ export default function NovoChamado() {
     descricao: "",
     observacao: "",
     horaTravou: "",
+    dataPosicao: "",
     recorrente: false,
   });
 
@@ -130,7 +131,8 @@ export default function NovoChamado() {
       created_by_name: profile?.nome || null,
       created_by_email: profile?.email || null,
       created_by_role: profile?.cargo || null,
-    }).select("id").single();
+      data_posicao: form.dataPosicao ? new Date(form.dataPosicao).toISOString() : null,
+    } as any).select("id").single();
 
     if (error) {
       setLoading(false);
@@ -204,6 +206,11 @@ export default function NovoChamado() {
                 <Label htmlFor="horaTravou">Hora que a placa travou</Label>
                 <Input id="horaTravou" type="datetime-local" value={form.horaTravou} onChange={(e) => update("horaTravou", e.target.value)} />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dataPosicao">Data da posição (extração do sistema da tecnologia)</Label>
+              <Input id="dataPosicao" type="datetime-local" value={form.dataPosicao} onChange={(e) => update("dataPosicao", e.target.value)} />
             </div>
 
             <div className="space-y-2">
