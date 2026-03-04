@@ -17,7 +17,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowLeft, RotateCcw, History, Trash2 } from "lucide-react";
+import { ArrowLeft, RotateCcw, History, Trash2, Upload, Link as LinkIcon, MessageCircle, ExternalLink } from "lucide-react";
+import { gerarMensagemWhatsApp, abrirWhatsApp } from "@/lib/whatsapp";
 import type { ChamadoDB } from "@/hooks/useChamados";
 
 type EncerrarOpcao = "destravou" | "continua_travado" | "sem_cobertura";
@@ -37,6 +38,8 @@ export default function DetalhesChamado() {
   const { user, profile } = useAuth();
   const [chamado, setChamado] = useState<ChamadoDB | null>(null);
   const [observacao, setObservacao] = useState("");
+  const [observacaoTecnica, setObservacaoTecnica] = useState("");
+  const [linkAcompanhamento, setLinkAcompanhamento] = useState("");
   const [status, setStatus] = useState("Aberto");
   const [dataRetornoSinal, setDataRetornoSinal] = useState("");
   const [encerrarOpcao, setEncerrarOpcao] = useState<EncerrarOpcao>("destravou");
@@ -44,6 +47,8 @@ export default function DetalhesChamado() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [whatsappNumero, setWhatsappNumero] = useState("");
 
   const isAdmin = profile?.role === "admin";
 
@@ -54,9 +59,17 @@ export default function DetalhesChamado() {
       supabase.from("chamado_historico").select("*").eq("chamado_id", id).order("created_at", { ascending: false }),
     ]).then(([chamadoRes, histRes]) => {
       if (chamadoRes.data) {
-        setChamado(chamadoRes.data);
-        setObservacao(chamadoRes.data.observacao || "");
-        setStatus(chamadoRes.data.status);
+        const c = chamadoRes.data;
+        setChamado(c);
+        setObservacao(c.observacao || "");
+        setObservacaoTecnica((c as any).observacao_tecnica || "");
+        setLinkAcompanhamento((c as any).link_acompanhamento || "");
+        setStatus(c.status);
+        // Fetch WhatsApp number for this technology
+        if (c.tecnologia) {
+          supabase.from("tecnologia_contatos").select("whatsapp_numero").eq("tecnologia", c.tecnologia).maybeSingle()
+            .then(({ data }) => { if (data) setWhatsappNumero(data.whatsapp_numero); });
+        }
       }
       setHistorico((histRes.data as HistoricoItem[]) || []);
       setLoading(false);
@@ -88,6 +101,54 @@ export default function DetalhesChamado() {
     return diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
   }, [chamado]);
 
+  const handleUploadFoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !chamado) return;
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const path = `${chamado.id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from("chamado-anexos").upload(path, file);
+      if (uploadError) throw uploadError;
+      const { data: urlData } = supabase.storage.from("chamado-anexos").getPublicUrl(path);
+      const fotoUrl = urlData.publicUrl;
+      await supabase.from("chamados").update({ anexo_foto_url: fotoUrl } as any).eq("id", chamado.id);
+      setChamado({ ...chamado, anexo_foto_url: fotoUrl } as any);
+      await addHistorico("Foto anexada", `Arquivo: ${file.name}`);
+      toast({ title: "Foto anexada com sucesso" });
+    } catch (err: any) {
+      toast({ title: "Erro ao enviar foto", description: err?.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleEnviarWhatsApp = () => {
+    if (!chamado) return;
+    if (!whatsappNumero) {
+      toast({ title: "Número não cadastrado", description: "Cadastre o número WhatsApp da tecnologia nas Configurações ou abaixo.", variant: "destructive" });
+      return;
+    }
+    const horaStr = chamado.hora_travou ? format(parseISO(chamado.hora_travou), "HH:mm") : "horário não informado";
+    const msg = gerarMensagemWhatsApp(chamado.placa, horaStr);
+    abrirWhatsApp(whatsappNumero, msg);
+    addHistorico("Mensagem WhatsApp enviada", `Tecnologia: ${chamado.tecnologia}`);
+  };
+
+  const handleSalvarNumeroWhatsApp = async () => {
+    if (!chamado || !whatsappNumero.trim()) return;
+    try {
+      const { error } = await supabase.from("tecnologia_contatos").upsert(
+        { tecnologia: chamado.tecnologia, whatsapp_numero: whatsappNumero.trim() } as any,
+        { onConflict: "tecnologia" }
+      );
+      if (error) throw error;
+      toast({ title: "Número salvo com sucesso" });
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar número", description: err?.message, variant: "destructive" });
+    }
+  };
+
   if (loading) return <div className="flex items-center justify-center py-20"><p className="text-muted-foreground">Carregando...</p></div>;
 
   if (!chamado) {
@@ -104,7 +165,6 @@ export default function DetalhesChamado() {
 
   const handleStatusChange = (newStatus: string) => {
     setStatus(newStatus);
-    // Reset encerramento state when changing status
     if (newStatus !== "Resolvido") {
       setEncerrarOpcao("destravou");
       setDataRetornoSinal("");
@@ -112,7 +172,6 @@ export default function DetalhesChamado() {
   };
 
   const handleSave = async () => {
-    // Validation: only require date when "destravou" is selected
     if (isEncerramento && encerrarOpcao === "destravou" && !dataRetornoSinal) {
       toast({ title: "Campo obrigatório", description: "Informe a data e hora que a placa destravou.", variant: "destructive" });
       return;
@@ -120,7 +179,11 @@ export default function DetalhesChamado() {
 
     setSaving(true);
     try {
-      const updates: Record<string, unknown> = { observacao };
+      const updates: Record<string, unknown> = {
+        observacao,
+        observacao_tecnica: observacaoTecnica,
+        link_acompanhamento: linkAcompanhamento,
+      };
       let historicoAcao = "";
       let historicoDetalhes = "";
 
@@ -239,6 +302,8 @@ export default function DetalhesChamado() {
     }
   };
 
+  const fotoUrl = (chamado as any).anexo_foto_url as string | null;
+
   const infoRows = [
     { label: "Placa", value: chamado.placa },
     { label: "Transportadora", value: chamado.transportadora },
@@ -248,6 +313,7 @@ export default function DetalhesChamado() {
     { label: "Criado por", value: chamado.created_by_name || "—" },
     { label: "Cargo (criador)", value: chamado.created_by_role || "—" },
     { label: "Data de Abertura", value: format(parseISO(chamado.data_abertura), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) },
+    ...(chamado.hora_travou ? [{ label: "Hora que Travou", value: format(parseISO(chamado.hora_travou), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) }] : []),
     ...(chamado.finalizado_por_nome ? [
       { label: "Finalizado por", value: chamado.finalizado_por_nome },
       { label: "Cargo (finalizador)", value: chamado.finalizado_por_cargo || "—" },
@@ -274,31 +340,38 @@ export default function DetalhesChamado() {
             </div>
           </div>
         </div>
-        {isAdmin && (
-          <AlertDialog>
-            <AlertDialogTrigger asChild>
-              <Button variant="destructive" size="sm" disabled={deleting}>
-                <Trash2 className="mr-2 h-4 w-4" />
-                {deleting ? "Excluindo..." : "Excluir"}
-              </Button>
-            </AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta ação é irreversível. O chamado da placa <strong>{chamado.placa}</strong> será
-                  excluído permanentemente do sistema, incluindo todo o histórico de interações.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Excluir permanentemente
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        )}
+        <div className="flex items-center gap-2">
+          {/* WhatsApp Button */}
+          <Button variant="outline" size="sm" onClick={handleEnviarWhatsApp} className="text-green-600 border-green-300 hover:bg-green-50">
+            <MessageCircle className="mr-2 h-4 w-4" />
+            WhatsApp
+          </Button>
+          {isAdmin && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" disabled={deleting}>
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  {deleting ? "Excluindo..." : "Excluir"}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação é irreversível. O chamado da placa <strong>{chamado.placa}</strong> será
+                    excluído permanentemente do sistema, incluindo todo o histórico de interações.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                    Excluir permanentemente
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+        </div>
       </div>
 
       <Card>
@@ -316,6 +389,84 @@ export default function DetalhesChamado() {
       <Card>
         <CardHeader><CardTitle>Descrição</CardTitle></CardHeader>
         <CardContent><p className="text-sm leading-relaxed">{chamado.descricao}</p></CardContent>
+      </Card>
+
+      {/* Anexos */}
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><Upload className="h-5 w-5" /> Anexos</CardTitle></CardHeader>
+        <CardContent className="space-y-4">
+          {/* Photo */}
+          <div className="space-y-2">
+            <Label>Print da placa travada</Label>
+            {fotoUrl ? (
+              <div className="space-y-2">
+                <img src={fotoUrl} alt="Print da placa" className="max-h-48 rounded-md border object-contain" />
+                <a href={fotoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                  <ExternalLink className="h-3 w-3" /> Abrir em nova aba
+                </a>
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">Nenhuma foto anexada.</p>
+            )}
+            {!chamadoFinalizado && (
+              <div>
+                <Input type="file" accept="image/*" onChange={handleUploadFoto} disabled={uploading} className="max-w-xs" />
+                {uploading && <p className="text-xs text-muted-foreground mt-1">Enviando...</p>}
+              </div>
+            )}
+          </div>
+
+          {/* Link */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1"><LinkIcon className="h-4 w-4" /> Link de acompanhamento</Label>
+            <Input
+              placeholder="https://..."
+              value={linkAcompanhamento}
+              onChange={(e) => setLinkAcompanhamento(e.target.value)}
+              disabled={chamadoFinalizado}
+            />
+            {linkAcompanhamento && (
+              <a href={linkAcompanhamento} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                <ExternalLink className="h-3 w-3" /> Abrir link
+              </a>
+            )}
+          </div>
+
+          {/* Technical note */}
+          <div className="space-y-2">
+            <Label>Observação técnica adicional</Label>
+            <Textarea
+              rows={3}
+              placeholder="Informações técnicas..."
+              value={observacaoTecnica}
+              onChange={(e) => setObservacaoTecnica(e.target.value)}
+              disabled={chamadoFinalizado}
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* WhatsApp Config */}
+      <Card>
+        <CardHeader><CardTitle className="flex items-center gap-2"><MessageCircle className="h-5 w-5 text-green-600" /> WhatsApp da Tecnologia</CardTitle></CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-2">
+            <Label>Número WhatsApp ({chamado.tecnologia})</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="5511999999999"
+                value={whatsappNumero}
+                onChange={(e) => setWhatsappNumero(e.target.value)}
+              />
+              <Button variant="outline" size="sm" onClick={handleSalvarNumeroWhatsApp}>Salvar</Button>
+            </div>
+            <p className="text-xs text-muted-foreground">Formato: código do país + DDD + número (ex: 5511999999999)</p>
+          </div>
+          <Button onClick={handleEnviarWhatsApp} className="bg-green-600 hover:bg-green-700 text-white w-full">
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Enviar para Tecnologia via WhatsApp
+          </Button>
+        </CardContent>
       </Card>
 
       <Card>
@@ -340,7 +491,6 @@ export default function DetalhesChamado() {
                 value={encerrarOpcao}
                 onValueChange={(v) => {
                   setEncerrarOpcao(v as EncerrarOpcao);
-                  // Clear date when switching away from destravou
                   if (v !== "destravou") setDataRetornoSinal("");
                 }}
                 className="space-y-3"
@@ -352,7 +502,7 @@ export default function DetalhesChamado() {
                     <p className="text-xs text-muted-foreground">Informar data e hora que o sinal voltou</p>
                   </div>
                 </div>
-                <div className={`flex items-start space-x-3 rounded-md border p-3 transition-colors ${encerrarOpcao === "continua_travado" ? "bg-status-locked/10 border-status-locked/40" : "bg-background"}`}>
+                <div className={`flex items-start space-x-3 rounded-md border p-3 transition-colors ${encerrarOpcao === "continua_travado" ? "bg-orange-500/10 border-orange-400/40" : "bg-background"}`}>
                   <RadioGroupItem value="continua_travado" id="continua_travado" className="mt-0.5" />
                   <div>
                     <Label htmlFor="continua_travado" className="font-medium cursor-pointer">Continua travado</Label>
@@ -371,14 +521,8 @@ export default function DetalhesChamado() {
               {encerrarOpcao === "destravou" && (
                 <div className="space-y-2 pt-2">
                   <Label className="font-semibold">Data e hora que destravou *</Label>
-                  <Input
-                    type="datetime-local"
-                    value={dataRetornoSinal}
-                    onChange={(e) => setDataRetornoSinal(e.target.value)}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Será usado para calcular o tempo total travado.
-                  </p>
+                  <Input type="datetime-local" value={dataRetornoSinal} onChange={(e) => setDataRetornoSinal(e.target.value)} />
+                  <p className="text-xs text-muted-foreground">Será usado para calcular o tempo total travado.</p>
                 </div>
               )}
 

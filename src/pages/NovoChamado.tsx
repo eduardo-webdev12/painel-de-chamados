@@ -91,6 +91,7 @@ export default function NovoChamado() {
     descricao: "",
     observacao: "",
     horaTravou: "",
+    dataPosicao: "",
     recorrente: false,
   });
 
