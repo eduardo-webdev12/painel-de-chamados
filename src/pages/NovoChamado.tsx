@@ -131,7 +131,8 @@ export default function NovoChamado() {
       created_by_name: profile?.nome || null,
       created_by_email: profile?.email || null,
       created_by_role: profile?.cargo || null,
-    }).select("id").single();
+      data_posicao: form.dataPosicao ? new Date(form.dataPosicao).toISOString() : null,
+    } as any).select("id").single();
 
     if (error) {
       setLoading(false);
