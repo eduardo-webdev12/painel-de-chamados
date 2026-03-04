@@ -60,6 +60,7 @@ export type Database = {
       }
       chamados: {
         Row: {
+          anexo_foto_url: string | null
           contagem_recorrencia: number
           created_at: string
           created_by_email: string | null
@@ -68,6 +69,7 @@ export type Database = {
           criado_por: string | null
           data_abertura: string
           data_hora_retorno_sinal: string | null
+          data_posicao: string | null
           data_resolucao: string | null
           descricao: string
           finalizado_em: string | null
@@ -76,7 +78,9 @@ export type Database = {
           finalizado_por_nome: string | null
           hora_travou: string | null
           id: string
+          link_acompanhamento: string | null
           observacao: string | null
+          observacao_tecnica: string | null
           placa: string
           recorrente: boolean
           status: string
@@ -86,6 +90,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          anexo_foto_url?: string | null
           contagem_recorrencia?: number
           created_at?: string
           created_by_email?: string | null
@@ -94,6 +99,7 @@ export type Database = {
           criado_por?: string | null
           data_abertura?: string
           data_hora_retorno_sinal?: string | null
+          data_posicao?: string | null
           data_resolucao?: string | null
           descricao: string
           finalizado_em?: string | null
@@ -102,7 +108,9 @@ export type Database = {
           finalizado_por_nome?: string | null
           hora_travou?: string | null
           id?: string
+          link_acompanhamento?: string | null
           observacao?: string | null
+          observacao_tecnica?: string | null
           placa: string
           recorrente?: boolean
           status?: string
@@ -112,6 +120,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          anexo_foto_url?: string | null
           contagem_recorrencia?: number
           created_at?: string
           created_by_email?: string | null
@@ -120,6 +129,7 @@ export type Database = {
           criado_por?: string | null
           data_abertura?: string
           data_hora_retorno_sinal?: string | null
+          data_posicao?: string | null
           data_resolucao?: string | null
           descricao?: string
           finalizado_em?: string | null
@@ -128,7 +138,9 @@ export type Database = {
           finalizado_por_nome?: string | null
           hora_travou?: string | null
           id?: string
+          link_acompanhamento?: string | null
           observacao?: string | null
+          observacao_tecnica?: string | null
           placa?: string
           recorrente?: boolean
           status?: string
@@ -163,6 +175,30 @@ export type Database = {
           nome?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      tecnologia_contatos: {
+        Row: {
+          created_at: string
+          id: string
+          tecnologia: string
+          updated_at: string
+          whatsapp_numero: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          tecnologia: string
+          updated_at?: string
+          whatsapp_numero: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          tecnologia?: string
+          updated_at?: string
+          whatsapp_numero?: string
         }
         Relationships: []
       }
