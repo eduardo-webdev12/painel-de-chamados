@@ -130,7 +130,11 @@ export default function DetalhesChamado() {
       return;
     }
     const horaStr = chamado.hora_travou ? format(parseISO(chamado.hora_travou), "HH:mm") : "horário não informado";
-    const msg = gerarMensagemWhatsApp(chamado.placa, horaStr);
+    const fotoAnexo = (chamado as any).anexo_foto_url as string | null;
+    let msg = gerarMensagemWhatsApp(chamado.placa, horaStr, profile?.nome);
+    if (fotoAnexo) {
+      msg += `\n\n📎 Print da ocorrência:\n${fotoAnexo}`;
+    }
     abrirWhatsApp(whatsappNumero, msg);
     addHistorico("Mensagem WhatsApp enviada", `Tecnologia: ${chamado.tecnologia}`);
   };
