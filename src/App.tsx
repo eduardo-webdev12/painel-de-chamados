@@ -13,6 +13,12 @@ import NovoChamado from "./pages/NovoChamado";
 import DetalhesChamado from "./pages/DetalhesChamado";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
+import AcompanhamentoOperacional from "./pages/AcompanhamentoOperacional";
+import HistoricoPlacas from "./pages/HistoricoPlacas";
+import Transportadoras from "./pages/Transportadoras";
+import Tecnologias from "./pages/Tecnologias";
+import Monitoramento from "./pages/Monitoramento";
+import GestaoUsuarios from "./pages/GestaoUsuarios";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
