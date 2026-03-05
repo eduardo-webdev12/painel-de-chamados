@@ -45,6 +45,12 @@ function ProtectedRoutes() {
         <Route path="/novo-chamado" element={<NovoChamado />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
+        <Route path="/acompanhamento" element={<AcompanhamentoOperacional />} />
+        <Route path="/historico-placas" element={<HistoricoPlacas />} />
+        <Route path="/transportadoras" element={<Transportadoras />} />
+        <Route path="/tecnologias" element={<Tecnologias />} />
+        <Route path="/monitoramento" element={<Monitoramento />} />
+        <Route path="/gestao-usuarios" element={<GestaoUsuarios />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
