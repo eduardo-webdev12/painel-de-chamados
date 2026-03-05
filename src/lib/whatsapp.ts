@@ -1,9 +1,9 @@
 // WhatsApp message generator based on time of day
-export function gerarMensagemWhatsApp(placa: string, horaTravou: string): string {
+export function gerarMensagemWhatsApp(placa: string, horaTravou: string, operadorNome?: string): string {
   const hora = new Date().getHours();
   let saudacao: string;
 
-  if (hora >= 6 && hora < 12) {
+  if (hora >= 5 && hora < 12) {
     saudacao = "Bom dia, tudo bem?";
   } else if (hora >= 12 && hora < 18) {
     saudacao = "Boa tarde, tudo bem?";
@@ -12,14 +12,9 @@ export function gerarMensagemWhatsApp(placa: string, horaTravou: string): string
   }
 
   const horaFormatada = horaTravou || "horário não informado";
+  const nome = operadorNome || "Eduardo";
 
-  if (hora >= 6 && hora < 12) {
-    return `${saudacao}\nEduardo do SAC VX.\nPlaca: ${placa}\nA placa travou às ${horaFormatada}.\nSegue em anexo o print do sistema.\nPode verificar se está vindo na integração ou o que pode ter ocorrido?`;
-  } else if (hora >= 12 && hora < 18) {
-    return `${saudacao}\nEduardo do SAC VX.\nPlaca: ${placa}\nA placa travou às ${horaFormatada}.\nSegue print em anexo.\nPode verificar por favor?`;
-  } else {
-    return `${saudacao}\nEduardo do SAC VX.\nPlaca: ${placa}\nA placa travou às ${horaFormatada}.\nPode verificar para nós?`;
-  }
+  return `*SAC VX INTEGRAÇÕES VX:*\n\n${saudacao}\n${nome} do SAC VX.\nPlaca: ${placa}\nA placa travou às ${horaFormatada}.\nPoderiam verificar por gentileza se está vindo na integração ou se ocorreu alguma falha no rastreador?`;
 }
 
 export function abrirWhatsApp(numero: string, mensagem: string) {

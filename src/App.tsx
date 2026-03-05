@@ -13,6 +13,12 @@ import NovoChamado from "./pages/NovoChamado";
 import DetalhesChamado from "./pages/DetalhesChamado";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
+import AcompanhamentoOperacional from "./pages/AcompanhamentoOperacional";
+import HistoricoPlacas from "./pages/HistoricoPlacas";
+import Transportadoras from "./pages/Transportadoras";
+import Tecnologias from "./pages/Tecnologias";
+import Monitoramento from "./pages/Monitoramento";
+import GestaoUsuarios from "./pages/GestaoUsuarios";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,6 +45,12 @@ function ProtectedRoutes() {
         <Route path="/novo-chamado" element={<NovoChamado />} />
         <Route path="/relatorios" element={<Relatorios />} />
         <Route path="/configuracoes" element={<Configuracoes />} />
+        <Route path="/acompanhamento" element={<AcompanhamentoOperacional />} />
+        <Route path="/historico-placas" element={<HistoricoPlacas />} />
+        <Route path="/transportadoras" element={<Transportadoras />} />
+        <Route path="/tecnologias" element={<Tecnologias />} />
+        <Route path="/monitoramento" element={<Monitoramento />} />
+        <Route path="/gestao-usuarios" element={<GestaoUsuarios />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
