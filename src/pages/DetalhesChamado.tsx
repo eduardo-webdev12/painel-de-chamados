@@ -183,7 +183,7 @@ export default function DetalhesChamado() {
 
     setSaving(true);
     try {
-      const updates: Record<string, unknown> = {
+      const updates: Record<string, any> = {
         observacao,
         observacao_tecnica: observacaoTecnica,
         link_acompanhamento: linkAcompanhamento,
@@ -199,33 +199,24 @@ export default function DetalhesChamado() {
         updates.finalizado_por_cargo = profile?.cargo || null;
         updates.finalizado_em = now;
 
-        switch (encerrarOpcao) {
-          case "destravou": {
-            updates.status = "Resolvido";
-            const retornoDate = new Date(dataRetornoSinal);
-            updates.data_hora_retorno_sinal = retornoDate.toISOString();
-            if (chamado.hora_travou) {
-              const diff = differenceInMinutes(retornoDate, parseISO(chamado.hora_travou));
-              updates.tempo_travada = diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
-            }
-            historicoAcao = "Chamado encerrado — Resolvido";
-            historicoDetalhes = `Retorno do sinal: ${format(retornoDate, "dd/MM/yyyy HH:mm")}`;
-            break;
+        if (encerrarOpcao === "destravou") {
+          updates.status = "Resolvido";
+          const retornoDate = new Date(dataRetornoSinal);
+          updates.data_hora_retorno_sinal = retornoDate.toISOString();
+          if (chamado.hora_travou) {
+            const diff = differenceInMinutes(retornoDate, parseISO(chamado.hora_travou));
+            updates.tempo_travada = diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
           }
-          case "continua_travado": {
-            updates.status = "Encerrado — Continua travado";
-            updates.data_hora_retorno_sinal = null;
-            historicoAcao = "Chamado encerrado — Continua travado";
-            historicoDetalhes = "Placa permanece sem sinal";
-            break;
-          }
-          case "sem_cobertura": {
-            updates.status = "Encerrado — Sem cobertura";
-            updates.data_hora_retorno_sinal = null;
-            historicoAcao = "Chamado encerrado — Sem cobertura";
-            historicoDetalhes = "Região ou placa sem cobertura de sinal";
-            break;
-          }
+          historicoAcao = "Chamado encerrado — Resolvido";
+          historicoDetalhes = `Retorno do sinal: ${format(retornoDate, "dd/MM/yyyy HH:mm")}`;
+        } else if (encerrarOpcao === "continua_travado") {
+          updates.status = "Encerrado - Continua travado";
+          historicoAcao = "Chamado encerrado — Continua travado";
+          historicoDetalhes = "Placa permanece sem sinal";
+        } else if (encerrarOpcao === "sem_cobertura") {
+          updates.status = "Encerrado - Sem cobertura";
+          historicoAcao = "Chamado encerrado — Sem cobertura";
+          historicoDetalhes = "Região ou placa sem cobertura de sinal";
         }
       } else {
         updates.status = status;
@@ -239,8 +230,9 @@ export default function DetalhesChamado() {
         historicoAcao = "Observação atualizada";
       }
 
-      const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
+      const { error } = await supabase.from("chamados").update(updates as any).eq("id", chamado.id);
       if (error) {
+        console.error("Erro ao atualizar chamado:", error);
         toast({ title: "Erro ao atualizar", description: error.message, variant: "destructive" });
         setSaving(false);
         return;
