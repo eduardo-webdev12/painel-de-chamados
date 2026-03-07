@@ -48,6 +48,8 @@ export default function DetalhesChamado() {
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const [whatsappNumero, setWhatsappNumero] = useState("");
+  const [recorrenciaDialogOpen, setRecorrenciaDialogOpen] = useState(false);
+  const [recorrenciaDataHora, setRecorrenciaDataHora] = useState(() => format(new Date(), "yyyy-MM-dd'T'HH:mm"));
 
   const isAdmin = profile?.role === "admin";
 
