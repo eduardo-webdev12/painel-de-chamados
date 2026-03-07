@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useChamados, ChamadoDB } from "@/hooks/useChamados";
+import { normalizarStatusChamado } from "@/lib/chamadoWorkflow";
 import { motion } from "framer-motion";
 import {
   PlusCircle, AlertTriangle, Clock, CheckCircle2, Inbox, RotateCcw,
