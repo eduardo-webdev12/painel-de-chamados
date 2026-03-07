@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useChamados } from "@/hooks/useChamados";
+import { normalizarStatusChamado } from "@/lib/chamadoWorkflow";
 import { Search } from "lucide-react";
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 
