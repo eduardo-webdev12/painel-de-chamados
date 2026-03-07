@@ -546,9 +546,36 @@ export default function DetalhesChamado() {
               {saving ? "Salvando..." : "Salvar Alterações"}
             </Button>
             {chamadoFinalizado && (
-              <Button variant="outline" onClick={handleVoltouTravar} disabled={saving}>
-                <RotateCcw className="mr-2 h-4 w-4" />Placa Voltou a Travar
-              </Button>
+              <AlertDialog open={recorrenciaDialogOpen} onOpenChange={setRecorrenciaDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" onClick={handleVoltouTravar} disabled={saving}>
+                    <RotateCcw className="mr-2 h-4 w-4" />Placa Voltou a Travar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Registrar recorrência da placa</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Informe a data e hora reais em que a placa voltou a travar para manter KPIs e histórico corretos.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="space-y-2">
+                    <Label htmlFor="recorrenciaDataHora">Data e hora da recorrência</Label>
+                    <Input
+                      id="recorrenciaDataHora"
+                      type="datetime-local"
+                      value={recorrenciaDataHora}
+                      onChange={(e) => setRecorrenciaDataHora(e.target.value)}
+                    />
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmarRecorrencia}>
+                      Confirmar recorrência
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </div>
         </CardContent>
