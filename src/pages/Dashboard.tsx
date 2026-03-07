@@ -292,6 +292,13 @@ export default function Dashboard() {
     if (metrics.abertos >= ALERT_THRESHOLDS.abertos) list.push({ message: `⚠ ${metrics.abertos} chamados abertos — acima do limite de ${ALERT_THRESHOLDS.abertos}`, level: "critical" });
     if (metrics.continuaTravado >= ALERT_THRESHOLDS.continuaTravado) list.push({ message: `🔒 ${metrics.continuaTravado} chamados "Continua Travado" — ação necessária`, level: "critical" });
     if (metrics.emTratativa >= ALERT_THRESHOLDS.emTratativa) list.push({ message: `🕐 ${metrics.emTratativa} chamados em tratativa — acima do limite de ${ALERT_THRESHOLDS.emTratativa}`, level: "warn" });
+    if (metrics.placasCriticasCount > 0) {
+      const preview = metrics.placasCriticasList.join(", ");
+      list.push({
+        message: `⚠ Placa crítica detectada (${metrics.placasCriticasCount}) — ${preview}${metrics.placasCriticasCount > metrics.placasCriticasList.length ? "..." : ""}`,
+        level: "critical",
+      });
+    }
     return list;
   }, [metrics]);
 
