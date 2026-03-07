@@ -224,7 +224,7 @@ export default function DetalhesChamado() {
         historicoDetalhes = fechamento.historicoDetalhes;
       } else {
         updates.status = normalizarStatusChamado(status);
-        if (status !== chamado.status) {
+        if (normalizarStatusChamado(status) !== normalizarStatusChamado(chamado.status)) {
           historicoAcao = "Status alterado";
           historicoDetalhes = `${normalizarStatusChamado(chamado.status)} → ${normalizarStatusChamado(status)}`;
         }
