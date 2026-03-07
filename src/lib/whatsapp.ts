@@ -1,25 +1,62 @@
-// WhatsApp message generator based on time of day
-export function gerarMensagemWhatsApp(placa: string, horaTravou: string, operadorNome?: string): string {
-  const hora = new Date().getHours();
-  let saudacao: string;
+import { z } from "zod";
 
-  if (hora >= 5 && hora < 12) {
-    saudacao = "Bom dia, tudo bem?";
-  } else if (hora >= 12 && hora < 18) {
-    saudacao = "Boa tarde, tudo bem?";
-  } else {
-    saudacao = "Boa noite, tudo bem?";
-  }
+const whatsappNumberSchema = z
+  .string()
+  .trim()
+  .regex(/^\d{12,14}$/, "Número WhatsApp inválido. Use país+DDD+número.");
 
-  const horaFormatada = horaTravou || "horário não informado";
-  const nome = operadorNome || "Eduardo";
+const whatsappMessageSchema = z
+  .string()
+  .trim()
+  .min(10, "Mensagem vazia")
+  .max(1800, "Mensagem muito longa para WhatsApp.");
 
-  return `*SAC VX INTEGRAÇÕES VX:*\n\n${saudacao}\n${nome} do SAC VX.\nPlaca: ${placa}\nA placa travou às ${horaFormatada}.\nPoderiam verificar por gentileza se está vindo na integração ou se ocorreu alguma falha no rastreador?`;
+const horaTravouSchema = z.string().trim().min(1);
+
+const saudacaoPorHorario = (agora = new Date()) => {
+  const hora = agora.getHours();
+  if (hora >= 5 && hora < 12) return "Bom dia, tudo bem?";
+  if (hora >= 12 && hora < 18) return "Boa tarde, tudo bem?";
+  return "Boa noite, tudo bem?";
+};
+
+export function gerarMensagemWhatsApp(
+  placa: string,
+  horaTravou: string,
+  operadorNome?: string,
+  tecnologia?: string,
+): string {
+  const saudacao = saudacaoPorHorario();
+  const horaFormatada = horaTravouSchema.safeParse(horaTravou).success ? horaTravou : "horário não informado";
+  const nome = (operadorNome || "Eduardo").trim();
+  const tecnologiaLinha = tecnologia ? `Tecnologia: ${tecnologia}\n` : "";
+
+  return [
+    "*SAC VX INTEGRAÇÕES VX:*",
+    "",
+    saudacao,
+    "",
+    `${nome} do SAC VX.",
+    `Placa: ${placa}`,
+    tecnologiaLinha.trimEnd(),
+    `A placa travou às ${horaFormatada}.`,
+    "Poderiam verificar por gentileza se está vindo na integração ou se ocorreu alguma falha no rastreador?",
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
 
 export function abrirWhatsApp(numero: string, mensagem: string) {
-  // Remove non-digits
-  const cleaned = numero.replace(/\D/g, "");
-  const url = `https://wa.me/${cleaned}?text=${encodeURIComponent(mensagem)}`;
-  window.open(url, "_blank");
+  const numeroParsed = whatsappNumberSchema.safeParse(numero.replace(/\D/g, ""));
+  if (!numeroParsed.success) {
+    throw new Error(numeroParsed.error.errors[0]?.message || "Número inválido");
+  }
+
+  const mensagemParsed = whatsappMessageSchema.safeParse(mensagem);
+  if (!mensagemParsed.success) {
+    throw new Error(mensagemParsed.error.errors[0]?.message || "Mensagem inválida");
+  }
+
+  const url = `https://wa.me/${numeroParsed.data}?text=${encodeURIComponent(mensagemParsed.data)}`;
+  window.open(url, "_blank", "noopener,noreferrer");
 }
