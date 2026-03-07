@@ -19,9 +19,8 @@ import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowLeft, RotateCcw, History, Trash2, Upload, Link as LinkIcon, MessageCircle, ExternalLink } from "lucide-react";
 import { gerarMensagemWhatsApp, abrirWhatsApp } from "@/lib/whatsapp";
+import { montarPayloadEncerramento, montarPayloadRecorrencia, normalizarStatusChamado, type EncerrarOpcao } from "@/lib/chamadoWorkflow";
 import type { ChamadoDB } from "@/hooks/useChamados";
-
-type EncerrarOpcao = "destravou" | "continua_travado" | "sem_cobertura";
 
 interface HistoricoItem {
   id: string;
@@ -49,6 +48,8 @@ export default function DetalhesChamado() {
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
   const [uploading, setUploading] = useState(false);
   const [whatsappNumero, setWhatsappNumero] = useState("");
+  const [recorrenciaDialogOpen, setRecorrenciaDialogOpen] = useState(false);
+  const [recorrenciaDataHora, setRecorrenciaDataHora] = useState(() => format(new Date(), "yyyy-MM-dd'T'HH:mm"));
 
   const isAdmin = profile?.role === "admin";
 
@@ -64,7 +65,7 @@ export default function DetalhesChamado() {
         setObservacao(c.observacao || "");
         setObservacaoTecnica((c as any).observacao_tecnica || "");
         setLinkAcompanhamento((c as any).link_acompanhamento || "");
-        setStatus(c.status);
+        setStatus(normalizarStatusChamado(c.status));
         // Fetch WhatsApp number for this technology
         if (c.tecnologia) {
           supabase.from("tecnologia_contatos").select("whatsapp_numero").eq("tecnologia", c.tecnologia).maybeSingle()
@@ -129,14 +130,20 @@ export default function DetalhesChamado() {
       toast({ title: "Número não cadastrado", description: "Cadastre o número WhatsApp da tecnologia nas Configurações ou abaixo.", variant: "destructive" });
       return;
     }
-    const horaStr = chamado.hora_travou ? format(parseISO(chamado.hora_travou), "HH:mm") : "horário não informado";
-    const fotoAnexo = (chamado as any).anexo_foto_url as string | null;
-    let msg = gerarMensagemWhatsApp(chamado.placa, horaStr, profile?.nome);
-    if (fotoAnexo) {
-      msg += `\n\n📎 Print da ocorrência:\n${fotoAnexo}`;
+
+    try {
+      const horaStr = chamado.hora_travou ? format(parseISO(chamado.hora_travou), "HH:mm") : "horário não informado";
+      const fotoAnexo = (chamado as any).anexo_foto_url as string | null;
+      let msg = gerarMensagemWhatsApp(chamado.placa, horaStr, profile?.nome, chamado.tecnologia);
+      if (fotoAnexo) {
+        msg += `\n\n📎 Print da ocorrência:\n${fotoAnexo}`;
+      }
+      abrirWhatsApp(whatsappNumero, msg);
+      addHistorico("Mensagem WhatsApp enviada", `Tecnologia: ${chamado.tecnologia}`);
+      toast({ title: "Mensagem preparada", description: "WhatsApp aberto com a mensagem padrão e o link do print." });
+    } catch (err: any) {
+      toast({ title: "Erro ao abrir WhatsApp", description: err?.message || "Verifique número e dados do chamado.", variant: "destructive" });
     }
-    abrirWhatsApp(whatsappNumero, msg);
-    addHistorico("Mensagem WhatsApp enviada", `Tecnologia: ${chamado.tecnologia}`);
   };
 
   const handleSalvarNumeroWhatsApp = async () => {
@@ -164,7 +171,8 @@ export default function DetalhesChamado() {
     );
   }
 
-  const chamadoFinalizado = chamado.status === "Resolvido" || chamado.status.includes("Encerrado");
+  const statusAtualChamado = normalizarStatusChamado(chamado.status);
+  const chamadoFinalizado = statusAtualChamado === "Resolvido" || statusAtualChamado.includes("Encerrado");
   const isEncerramento = status === "Resolvido" && !chamadoFinalizado;
 
   const handleStatusChange = (newStatus: string) => {
@@ -199,30 +207,26 @@ export default function DetalhesChamado() {
         updates.finalizado_por_cargo = profile?.cargo || null;
         updates.finalizado_em = now;
 
-        if (encerrarOpcao === "destravou") {
-          updates.status = "Resolvido";
-          const retornoDate = new Date(dataRetornoSinal);
-          updates.data_hora_retorno_sinal = retornoDate.toISOString();
-          if (chamado.hora_travou) {
-            const diff = differenceInMinutes(retornoDate, parseISO(chamado.hora_travou));
-            updates.tempo_travada = diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
-          }
-          historicoAcao = "Chamado encerrado — Resolvido";
-          historicoDetalhes = `Retorno do sinal: ${format(retornoDate, "dd/MM/yyyy HH:mm")}`;
-        } else if (encerrarOpcao === "continua_travado") {
-          updates.status = "Encerrado - Continua travado";
-          historicoAcao = "Chamado encerrado — Continua travado";
-          historicoDetalhes = "Placa permanece sem sinal";
-        } else if (encerrarOpcao === "sem_cobertura") {
-          updates.status = "Encerrado - Sem cobertura";
-          historicoAcao = "Chamado encerrado — Sem cobertura";
-          historicoDetalhes = "Região ou placa sem cobertura de sinal";
+        const fechamento = montarPayloadEncerramento({
+          opcao: encerrarOpcao,
+          dataRetornoSinal,
+          horaTravou: chamado.hora_travou,
+        });
+
+        if (!fechamento.ok) {
+          toast({ title: "Campo obrigatório", description: fechamento.error, variant: "destructive" });
+          setSaving(false);
+          return;
         }
+
+        Object.assign(updates, fechamento.updates);
+        historicoAcao = fechamento.historicoAcao;
+        historicoDetalhes = fechamento.historicoDetalhes;
       } else {
-        updates.status = status;
-        if (status !== chamado.status) {
+        updates.status = normalizarStatusChamado(status);
+        if (normalizarStatusChamado(status) !== normalizarStatusChamado(chamado.status)) {
           historicoAcao = "Status alterado";
-          historicoDetalhes = `${chamado.status} → ${status}`;
+          historicoDetalhes = `${normalizarStatusChamado(chamado.status)} → ${normalizarStatusChamado(status)}`;
         }
       }
 
@@ -251,30 +255,33 @@ export default function DetalhesChamado() {
     }
   };
 
-  const handleVoltouTravar = async () => {
+  const handleVoltouTravar = () => {
+    setRecorrenciaDataHora(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    setRecorrenciaDialogOpen(true);
+  };
+
+  const handleConfirmarRecorrencia = async () => {
+    const payload = montarPayloadRecorrencia(recorrenciaDataHora, chamado.contagem_recorrencia);
+    if (!payload.ok) {
+      toast({ title: "Dados inválidos", description: payload.error, variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     try {
-      const updates = {
-        status: "Aberto",
-        data_resolucao: null,
-        recorrente: true,
-        contagem_recorrencia: chamado.contagem_recorrencia + 1,
-        hora_travou: new Date().toISOString(),
-        finalizado_por_nome: null,
-        finalizado_por_email: null,
-        finalizado_por_cargo: null,
-        finalizado_em: null,
-        data_hora_retorno_sinal: null,
-      };
-      const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
+      const { error } = await supabase.from("chamados").update(payload.updates).eq("id", chamado.id);
       if (error) {
         toast({ title: "Erro", description: error.message, variant: "destructive" });
         return;
       }
-      await addHistorico("Placa voltou a travar", `Recorrência: ${chamado.contagem_recorrencia + 1}x`);
-      setChamado({ ...chamado, ...updates } as ChamadoDB);
+      await addHistorico(payload.historicoAcao, payload.historicoDetalhes);
+      setChamado({ ...chamado, ...(payload.updates as any) } as ChamadoDB);
       setStatus("Aberto");
-      toast({ title: "Placa marcada como travada novamente", description: `Recorrência: ${chamado.contagem_recorrencia + 1}x` });
+      setRecorrenciaDialogOpen(false);
+      toast({
+        title: "Recorrência registrada",
+        description: `Placa voltou a travar em ${format(new Date(recorrenciaDataHora), "dd/MM/yyyy HH:mm")}.`,
+      });
     } finally {
       setSaving(false);
     }
@@ -539,9 +546,36 @@ export default function DetalhesChamado() {
               {saving ? "Salvando..." : "Salvar Alterações"}
             </Button>
             {chamadoFinalizado && (
-              <Button variant="outline" onClick={handleVoltouTravar} disabled={saving}>
-                <RotateCcw className="mr-2 h-4 w-4" />Placa Voltou a Travar
-              </Button>
+              <AlertDialog open={recorrenciaDialogOpen} onOpenChange={setRecorrenciaDialogOpen}>
+                <AlertDialogTrigger asChild>
+                  <Button variant="outline" onClick={handleVoltouTravar} disabled={saving}>
+                    <RotateCcw className="mr-2 h-4 w-4" />Placa Voltou a Travar
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Registrar recorrência da placa</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Informe a data e hora reais em que a placa voltou a travar para manter KPIs e histórico corretos.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <div className="space-y-2">
+                    <Label htmlFor="recorrenciaDataHora">Data e hora da recorrência</Label>
+                    <Input
+                      id="recorrenciaDataHora"
+                      type="datetime-local"
+                      value={recorrenciaDataHora}
+                      onChange={(e) => setRecorrenciaDataHora(e.target.value)}
+                    />
+                  </div>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleConfirmarRecorrencia}>
+                      Confirmar recorrência
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             )}
           </div>
         </CardContent>

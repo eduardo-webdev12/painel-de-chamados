@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useChamados } from "@/hooks/useChamados";
+import { normalizarStatusChamado } from "@/lib/chamadoWorkflow";
 import { Search } from "lucide-react";
 import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 
@@ -46,8 +47,9 @@ export default function Chamados() {
 
   const filtrados = useMemo(() => {
     return chamados.filter((c) => {
+      const statusNormalizado = normalizarStatusChamado(c.status);
       if (busca && !c.placa.toLowerCase().includes(busca.toLowerCase())) return false;
-      if (filtroStatus !== "todos" && c.status !== filtroStatus) return false;
+      if (filtroStatus !== "todos" && statusNormalizado !== filtroStatus) return false;
       if (filtroTransportadora !== "todas" && c.transportadora !== filtroTransportadora) return false;
       if (filtroTecnologia !== "todas" && c.tecnologia !== filtroTecnologia) return false;
       if (filtroOperador !== "todos") {

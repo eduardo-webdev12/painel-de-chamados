@@ -1,6 +1,7 @@
 import { StatusChamado } from "@/types/chamado";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { normalizarStatusChamado } from "@/lib/chamadoWorkflow";
 
 const statusConfig: Record<string, { label: string; className: string }> = {
   Aberto: {
@@ -26,10 +27,12 @@ const statusConfig: Record<string, { label: string; className: string }> = {
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  const config = statusConfig[status] || { label: status, className: "bg-muted text-muted-foreground" };
+  const normalizedStatus = normalizarStatusChamado(status);
+  const config = statusConfig[normalizedStatus] || { label: normalizedStatus, className: "bg-muted text-muted-foreground" };
   return (
     <Badge variant="outline" className={cn("font-medium whitespace-nowrap", config.className)}>
       {config.label}
     </Badge>
   );
 }
+

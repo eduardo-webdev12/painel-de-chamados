@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useChamados, ChamadoDB } from "@/hooks/useChamados";
+import { normalizarStatusChamado } from "@/lib/chamadoWorkflow";
 import { motion } from "framer-motion";
 import {
   PlusCircle, AlertTriangle, Clock, CheckCircle2, Inbox, RotateCcw,
@@ -37,6 +38,7 @@ const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 type Periodo = "hoje" | "ontem" | "7dias" | "30dias" | "90dias" | "custom";
 
 const ALERT_THRESHOLDS = { emTratativa: 5, continuaTravado: 3, abertos: 10 };
+const PLACA_CRITICA_THRESHOLDS = { ocorrencias: 3, minutosTravada: 120 };
 
 // ─── Animated Counter ──────────────────────────────────────
 function AnimatedValue({ value, suffix = "" }: { value: string | number; suffix?: string }) {
@@ -173,17 +175,18 @@ export default function Dashboard() {
   // ─── Core Metrics ──────────────────────────────────────
   const metrics = useMemo(() => {
     const total = filtrados.length;
-    const abertos = filtrados.filter((c) => c.status === "Aberto").length;
-    const emTratativa = filtrados.filter((c) => c.status === "Em Tratativa").length;
-    const resolvidos = filtrados.filter((c) => c.status === "Resolvido").length;
-    const continuaTravado = filtrados.filter((c) => c.status === "Encerrado — Continua travado").length;
-    const semCobertura = filtrados.filter((c) => c.status === "Encerrado — Sem cobertura").length;
+    const withStatus = filtrados.map((c) => ({ ...c, statusNormalizado: normalizarStatusChamado(c.status) }));
+    const abertos = withStatus.filter((c) => c.statusNormalizado === "Aberto").length;
+    const emTratativa = withStatus.filter((c) => c.statusNormalizado === "Em Tratativa").length;
+    const resolvidos = withStatus.filter((c) => c.statusNormalizado === "Resolvido").length;
+    const continuaTravado = withStatus.filter((c) => c.statusNormalizado === "Encerrado — Continua travado").length;
+    const semCobertura = withStatus.filter((c) => c.statusNormalizado === "Encerrado — Sem cobertura").length;
     const recorrentes = filtrados.filter((c) => c.recorrente).length;
-    const resolvidosHoje = chamados.filter((c) => c.status === "Resolvido" && c.data_resolucao && isToday(parseISO(c.data_resolucao))).length;
+    const resolvidosHoje = chamados.filter((c) => normalizarStatusChamado(c.status) === "Resolvido" && c.data_resolucao && isToday(parseISO(c.data_resolucao))).length;
     const chamadosHoje = chamados.filter((c) => isToday(parseISO(c.data_abertura))).length;
 
     // MTTR - Mean Time To Resolve (only resolved)
-    const comResolucao = filtrados.filter((c) => c.status === "Resolvido" && c.data_resolucao);
+    const comResolucao = withStatus.filter((c) => c.statusNormalizado === "Resolvido" && c.data_resolucao);
     let mttr = "—";
     let mttrMinutos = 0;
     if (comResolucao.length > 0) {
@@ -193,7 +196,7 @@ export default function Dashboard() {
     }
 
     // Tempo médio em aberto
-    const abertosAtivos = filtrados.filter((c) => c.status === "Aberto" || c.status === "Em Tratativa");
+    const abertosAtivos = withStatus.filter((c) => c.statusNormalizado === "Aberto" || c.statusNormalizado === "Em Tratativa");
     let tempoMedioAberto = "—";
     if (abertosAtivos.length > 0) {
       const totalMin = abertosAtivos.reduce((acc, c) =>
@@ -224,6 +227,17 @@ export default function Dashboard() {
     const topTransp = Object.entries(transpCount).sort((a, b) => b[1] - a[1])[0];
     const topTec = Object.entries(tecCount).sort((a, b) => b[1] - a[1])[0];
     const topOp = Object.entries(opCount).sort((a, b) => b[1] - a[1])[0];
+
+    const placasCriticas = Object.entries(placaCount)
+      .filter(([, totalOcorrencias]) => totalOcorrencias >= PLACA_CRITICA_THRESHOLDS.ocorrencias)
+      .map(([placa]) => placa);
+
+    const placasAbertasMuitoTempo = withStatus
+      .filter((c) => (c.statusNormalizado === "Aberto" || c.statusNormalizado === "Em Tratativa") && c.hora_travou)
+      .filter((c) => differenceInMinutes(new Date(), parseISO(c.hora_travou!)) >= PLACA_CRITICA_THRESHOLDS.minutosTravada)
+      .map((c) => c.placa);
+
+    const placasCriticasSet = new Set([...placasCriticas, ...placasAbertasMuitoTempo]);
 
     const taxaResolucao = total > 0 ? ((resolvidos / total) * 100).toFixed(1) : "0";
     const taxaRecorrencia = total > 0 ? ((recorrentes / total) * 100).toFixed(1) : "0";
@@ -267,6 +281,8 @@ export default function Dashboard() {
       slaTransp, slaTec,
       mesAtual, mesAnterior, variacaoMensal, risco,
       placaCount, transpCount, tecCount, opCount,
+      placasCriticasCount: placasCriticasSet.size,
+      placasCriticasList: Array.from(placasCriticasSet).slice(0, 5),
     };
   }, [filtrados, chamados]);
 
@@ -276,6 +292,13 @@ export default function Dashboard() {
     if (metrics.abertos >= ALERT_THRESHOLDS.abertos) list.push({ message: `⚠ ${metrics.abertos} chamados abertos — acima do limite de ${ALERT_THRESHOLDS.abertos}`, level: "critical" });
     if (metrics.continuaTravado >= ALERT_THRESHOLDS.continuaTravado) list.push({ message: `🔒 ${metrics.continuaTravado} chamados "Continua Travado" — ação necessária`, level: "critical" });
     if (metrics.emTratativa >= ALERT_THRESHOLDS.emTratativa) list.push({ message: `🕐 ${metrics.emTratativa} chamados em tratativa — acima do limite de ${ALERT_THRESHOLDS.emTratativa}`, level: "warn" });
+    if (metrics.placasCriticasCount > 0) {
+      const preview = metrics.placasCriticasList.join(", ");
+      list.push({
+        message: `⚠ Placa crítica detectada (${metrics.placasCriticasCount}) — ${preview}${metrics.placasCriticasCount > metrics.placasCriticasList.length ? "..." : ""}`,
+        level: "critical",
+      });
+    }
     return list;
   }, [metrics]);
 
@@ -290,7 +313,10 @@ export default function Dashboard() {
 
   const statusChart = useMemo(() => {
     const counts: Record<string, number> = {};
-    filtrados.forEach((c) => { counts[c.status] = (counts[c.status] || 0) + 1; });
+    filtrados.forEach((c) => {
+      const status = normalizarStatusChamado(c.status);
+      counts[status] = (counts[status] || 0) + 1;
+    });
     return Object.entries(counts).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value }));
   }, [filtrados]);
 
