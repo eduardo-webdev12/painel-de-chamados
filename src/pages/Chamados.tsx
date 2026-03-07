@@ -47,8 +47,9 @@ export default function Chamados() {
 
   const filtrados = useMemo(() => {
     return chamados.filter((c) => {
+      const statusNormalizado = normalizarStatusChamado(c.status);
       if (busca && !c.placa.toLowerCase().includes(busca.toLowerCase())) return false;
-      if (filtroStatus !== "todos" && c.status !== filtroStatus) return false;
+      if (filtroStatus !== "todos" && statusNormalizado !== filtroStatus) return false;
       if (filtroTransportadora !== "todas" && c.transportadora !== filtroTransportadora) return false;
       if (filtroTecnologia !== "todas" && c.tecnologia !== filtroTecnologia) return false;
       if (filtroOperador !== "todos") {
