@@ -38,6 +38,7 @@ const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 type Periodo = "hoje" | "ontem" | "7dias" | "30dias" | "90dias" | "custom";
 
 const ALERT_THRESHOLDS = { emTratativa: 5, continuaTravado: 3, abertos: 10 };
+const PLACA_CRITICA_THRESHOLDS = { ocorrencias: 3, minutosTravada: 120 };
 
 // ─── Animated Counter ──────────────────────────────────────
 function AnimatedValue({ value, suffix = "" }: { value: string | number; suffix?: string }) {
