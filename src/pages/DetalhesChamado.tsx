@@ -207,30 +207,26 @@ export default function DetalhesChamado() {
         updates.finalizado_por_cargo = profile?.cargo || null;
         updates.finalizado_em = now;
 
-        if (encerrarOpcao === "destravou") {
-          updates.status = "Resolvido";
-          const retornoDate = new Date(dataRetornoSinal);
-          updates.data_hora_retorno_sinal = retornoDate.toISOString();
-          if (chamado.hora_travou) {
-            const diff = differenceInMinutes(retornoDate, parseISO(chamado.hora_travou));
-            updates.tempo_travada = diff < 60 ? `${diff} min` : `${(diff / 60).toFixed(1)} h`;
-          }
-          historicoAcao = "Chamado encerrado — Resolvido";
-          historicoDetalhes = `Retorno do sinal: ${format(retornoDate, "dd/MM/yyyy HH:mm")}`;
-        } else if (encerrarOpcao === "continua_travado") {
-          updates.status = "Encerrado - Continua travado";
-          historicoAcao = "Chamado encerrado — Continua travado";
-          historicoDetalhes = "Placa permanece sem sinal";
-        } else if (encerrarOpcao === "sem_cobertura") {
-          updates.status = "Encerrado - Sem cobertura";
-          historicoAcao = "Chamado encerrado — Sem cobertura";
-          historicoDetalhes = "Região ou placa sem cobertura de sinal";
+        const fechamento = montarPayloadEncerramento({
+          opcao: encerrarOpcao,
+          dataRetornoSinal,
+          horaTravou: chamado.hora_travou,
+        });
+
+        if (!fechamento.ok) {
+          toast({ title: "Campo obrigatório", description: fechamento.error, variant: "destructive" });
+          setSaving(false);
+          return;
         }
+
+        Object.assign(updates, fechamento.updates);
+        historicoAcao = fechamento.historicoAcao;
+        historicoDetalhes = fechamento.historicoDetalhes;
       } else {
-        updates.status = status;
+        updates.status = normalizarStatusChamado(status);
         if (status !== chamado.status) {
           historicoAcao = "Status alterado";
-          historicoDetalhes = `${chamado.status} → ${status}`;
+          historicoDetalhes = `${normalizarStatusChamado(chamado.status)} → ${normalizarStatusChamado(status)}`;
         }
       }
 
