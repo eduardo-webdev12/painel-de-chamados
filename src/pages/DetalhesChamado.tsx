@@ -65,7 +65,7 @@ export default function DetalhesChamado() {
         setObservacao(c.observacao || "");
         setObservacaoTecnica((c as any).observacao_tecnica || "");
         setLinkAcompanhamento((c as any).link_acompanhamento || "");
-        setStatus(c.status);
+        setStatus(normalizarStatusChamado(c.status));
         // Fetch WhatsApp number for this technology
         if (c.tecnologia) {
           supabase.from("tecnologia_contatos").select("whatsapp_numero").eq("tecnologia", c.tecnologia).maybeSingle()
