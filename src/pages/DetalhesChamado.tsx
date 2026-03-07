@@ -171,7 +171,8 @@ export default function DetalhesChamado() {
     );
   }
 
-  const chamadoFinalizado = chamado.status === "Resolvido" || chamado.status.includes("Encerrado");
+  const statusAtualChamado = normalizarStatusChamado(chamado.status);
+  const chamadoFinalizado = statusAtualChamado === "Resolvido" || statusAtualChamado.includes("Encerrado");
   const isEncerramento = status === "Resolvido" && !chamadoFinalizado;
 
   const handleStatusChange = (newStatus: string) => {
