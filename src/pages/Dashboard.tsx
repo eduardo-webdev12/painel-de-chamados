@@ -313,7 +313,10 @@ export default function Dashboard() {
 
   const statusChart = useMemo(() => {
     const counts: Record<string, number> = {};
-    filtrados.forEach((c) => { counts[c.status] = (counts[c.status] || 0) + 1; });
+    filtrados.forEach((c) => {
+      const status = normalizarStatusChamado(c.status);
+      counts[status] = (counts[status] || 0) + 1;
+    });
     return Object.entries(counts).filter(([, v]) => v > 0).map(([name, value]) => ({ name, value }));
   }, [filtrados]);
 
