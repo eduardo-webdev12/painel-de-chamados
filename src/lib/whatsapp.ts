@@ -29,16 +29,15 @@ export function gerarMensagemWhatsApp(
   const saudacao = saudacaoPorHorario();
   const horaFormatada = horaTravouSchema.safeParse(horaTravou).success ? horaTravou : "horário não informado";
   const nome = (operadorNome || "Eduardo").trim();
-  const tecnologiaLinha = tecnologia ? `Tecnologia: ${tecnologia}\n` : "";
 
   return [
     "*SAC VX INTEGRAÇÕES VX:*",
     "",
     saudacao,
     "",
-    `${nome} do SAC VX.",
+    `${nome} do SAC VX.`,
     `Placa: ${placa}`,
-    tecnologiaLinha.trimEnd(),
+    tecnologia ? `Tecnologia: ${tecnologia}` : null,
     `A placa travou às ${horaFormatada}.`,
     "Poderiam verificar por gentileza se está vindo na integração ou se ocorreu alguma falha no rastreador?",
   ]
