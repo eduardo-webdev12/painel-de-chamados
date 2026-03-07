@@ -19,9 +19,8 @@ import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ArrowLeft, RotateCcw, History, Trash2, Upload, Link as LinkIcon, MessageCircle, ExternalLink } from "lucide-react";
 import { gerarMensagemWhatsApp, abrirWhatsApp } from "@/lib/whatsapp";
+import { montarPayloadEncerramento, montarPayloadRecorrencia, normalizarStatusChamado, type EncerrarOpcao } from "@/lib/chamadoWorkflow";
 import type { ChamadoDB } from "@/hooks/useChamados";
-
-type EncerrarOpcao = "destravou" | "continua_travado" | "sem_cobertura";
 
 interface HistoricoItem {
   id: string;
