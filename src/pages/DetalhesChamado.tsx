@@ -255,30 +255,33 @@ export default function DetalhesChamado() {
     }
   };
 
-  const handleVoltouTravar = async () => {
+  const handleVoltouTravar = () => {
+    setRecorrenciaDataHora(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    setRecorrenciaDialogOpen(true);
+  };
+
+  const handleConfirmarRecorrencia = async () => {
+    const payload = montarPayloadRecorrencia(recorrenciaDataHora, chamado.contagem_recorrencia);
+    if (!payload.ok) {
+      toast({ title: "Dados inválidos", description: payload.error, variant: "destructive" });
+      return;
+    }
+
     setSaving(true);
     try {
-      const updates = {
-        status: "Aberto",
-        data_resolucao: null,
-        recorrente: true,
-        contagem_recorrencia: chamado.contagem_recorrencia + 1,
-        hora_travou: new Date().toISOString(),
-        finalizado_por_nome: null,
-        finalizado_por_email: null,
-        finalizado_por_cargo: null,
-        finalizado_em: null,
-        data_hora_retorno_sinal: null,
-      };
-      const { error } = await supabase.from("chamados").update(updates).eq("id", chamado.id);
+      const { error } = await supabase.from("chamados").update(payload.updates).eq("id", chamado.id);
       if (error) {
         toast({ title: "Erro", description: error.message, variant: "destructive" });
         return;
       }
-      await addHistorico("Placa voltou a travar", `Recorrência: ${chamado.contagem_recorrencia + 1}x`);
-      setChamado({ ...chamado, ...updates } as ChamadoDB);
+      await addHistorico(payload.historicoAcao, payload.historicoDetalhes);
+      setChamado({ ...chamado, ...(payload.updates as any) } as ChamadoDB);
       setStatus("Aberto");
-      toast({ title: "Placa marcada como travada novamente", description: `Recorrência: ${chamado.contagem_recorrencia + 1}x` });
+      setRecorrenciaDialogOpen(false);
+      toast({
+        title: "Recorrência registrada",
+        description: `Placa voltou a travar em ${format(new Date(recorrenciaDataHora), "dd/MM/yyyy HH:mm")}.`,
+      });
     } finally {
       setSaving(false);
     }
