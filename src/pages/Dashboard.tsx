@@ -243,6 +243,18 @@ export default function Dashboard() {
     const taxaResolucao = total > 0 ? ((resolvidos / total) * 100).toFixed(1) : "0";
     const taxaRecorrencia = total > 0 ? ((recorrentes / total) * 100).toFixed(1) : "0";
 
+    // MTBF global
+    const mtbfGlobal = calcularMTBFGlobal(filtrados);
+
+    // Predictive risk analysis
+    const placasAnalise = analisarPlacas(filtrados);
+    const placasCriticas = placasAnalise.filter(p => p.nivel === "critico").length;
+    const placasAlto = placasAnalise.filter(p => p.nivel === "alto").length;
+    const placasMedio = placasAnalise.filter(p => p.nivel === "medio").length;
+
+    // Time-based alerts
+    const alertasTempo = gerarAlertasTempo(filtrados);
+
     // SLA per transportadora (avg resolve time)
     const slaTransp: Record<string, { total: number; count: number }> = {};
     comResolucao.forEach((c) => {
