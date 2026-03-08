@@ -152,34 +152,27 @@ export default function PainelExecutivo() {
       const { default: jsPDF } = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
       const { getLogoBase64 } = await import("@/lib/logo-base64");
+      const { drawHeader, drawSectionTitle, drawFooter, getTableStyles, getKpiTableStyles, checkPageBreak, BRAND } = await import("@/lib/pdfTheme");
 
       const doc = new jsPDF({ orientation: "landscape" });
       const now = format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR });
       const periodoLabel = periodo ? `Últimos ${periodo} dias` : "Todos os períodos";
-      let y = 8;
 
-      // Logo
-      try {
-        const logo = await getLogoBase64();
-        doc.addImage(logo, "PNG", 14, y, 20, 20);
-      } catch {}
+      let logo: string | null = null;
+      try { logo = await getLogoBase64(); } catch {}
 
-      // Header
-      doc.setFontSize(18);
-      doc.text("Painel Executivo — SAC VX Integrações", 40, y + 10);
-      doc.setFontSize(9);
-      doc.setTextColor(100);
-      doc.text(`Gerado em ${now}  •  Período: ${periodoLabel}`, 40, y + 17);
-      doc.setTextColor(0);
-      y = 35;
+      let y = drawHeader({
+        doc, logo,
+        title: "Painel Executivo",
+        subtitle: "Visão consolidada da operação de monitoramento",
+        meta: [`Gerado em: ${now}`, `Período: ${periodoLabel}`, `Chamados: ${kpis.total}`],
+      });
 
-      // KPIs table
-      doc.setFontSize(12);
-      doc.text("KPIs Operacionais", 14, y);
-      y += 3;
+      // KPIs
+      y = drawSectionTitle(doc, "Indicadores Operacionais (KPIs)", y);
       autoTable(doc, {
         startY: y,
-        head: [["Score Médio", "MTTR Global", "MTBF Global", "Taxa Resolução", "Abertos", "Placas", "Recorrência", "Alertas"]],
+        head: [["Score Médio", "MTTR Global", "MTBF Global", "Taxa Resolução", "Abertos / Total", "Placas", "Recorrência", "Alertas"]],
         body: [[
           `${avgScore} pts`,
           formatTempo(kpis.mttr),
@@ -190,22 +183,20 @@ export default function PainelExecutivo() {
           `${kpis.taxaRecorrencia.toFixed(1)}%`,
           alertas.length,
         ]],
-        styles: { fontSize: 9, cellPadding: 4, halign: "center" },
-        headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
+        ...getKpiTableStyles(),
       });
       y = (doc as any).lastAutoTable.finalY + 10;
 
-      // Score ranking table
-      doc.setFontSize(12);
-      doc.text("Ranking de Confiabilidade", 14, y);
-      y += 3;
+      // Score ranking
+      y = checkPageBreak(doc, y, 60);
+      y = drawSectionTitle(doc, "Ranking de Confiabilidade das Tecnologias", y);
       autoTable(doc, {
         startY: y,
         head: [["#", "Tecnologia", "Score", "Status", "Placas", "Falhas", "MTTR", "Recorrência", "MTBF"]],
         body: techScores.map((d, i) => [
           i + 1,
           d.nome,
-          d.score,
+          `${d.score} pts`,
           SCORE_CONFIG[d.classificacao].label,
           d.totalPlacas,
           d.totalFalhas,
@@ -213,21 +204,27 @@ export default function PainelExecutivo() {
           `${(d.taxaRecorrencia * 100).toFixed(1)}%`,
           d.mtbf !== null ? formatTempo(d.mtbf) : "—",
         ]),
-        styles: { fontSize: 8, cellPadding: 3 },
-        headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
-        alternateRowStyles: { fillColor: [245, 247, 250] },
+        ...getTableStyles(),
+        columnStyles: {
+          0: { halign: "center", cellWidth: 10 },
+          2: { halign: "center", fontStyle: "bold" },
+          3: { halign: "center" },
+          4: { halign: "center" },
+          5: { halign: "center" },
+          6: { halign: "center" },
+          7: { halign: "center" },
+          8: { halign: "center" },
+        },
       });
       y = (doc as any).lastAutoTable.finalY + 10;
 
       // Placas em risco
       if (placasRisco.length > 0) {
-        if (y > 160) { doc.addPage(); y = 15; }
-        doc.setFontSize(12);
-        doc.text("Placas em Risco", 14, y);
-        y += 3;
+        y = checkPageBreak(doc, y, 50);
+        y = drawSectionTitle(doc, "Placas em Risco Operacional", y, { color: BRAND.danger });
         autoTable(doc, {
           startY: y,
-          head: [["Placa", "Nível", "Ocorrências", "Recorrências", "Tecnologias"]],
+          head: [["Placa", "Nível de Risco", "Ocorrências", "Recorrências", "Tecnologias"]],
           body: placasRisco.slice(0, 15).map(p => [
             p.placa,
             RISCO_CONFIG[p.nivel].label,
@@ -235,38 +232,31 @@ export default function PainelExecutivo() {
             p.recorrencias,
             p.tecnologias.join(", "),
           ]),
-          styles: { fontSize: 8, cellPadding: 3 },
-          headStyles: { fillColor: [220, 50, 50], textColor: 255, fontStyle: "bold" },
-          alternateRowStyles: { fillColor: [255, 245, 245] },
+          ...getTableStyles("danger"),
+          columnStyles: {
+            0: { halign: "center", fontStyle: "bold" },
+            1: { halign: "center" },
+            2: { halign: "center" },
+            3: { halign: "center" },
+          },
         });
         y = (doc as any).lastAutoTable.finalY + 10;
       }
 
-      // Weekly evolution table
+      // Weekly evolution
       if (weeklyEvolution.length > 0) {
-        if (y > 160) { doc.addPage(); y = 15; }
-        doc.setFontSize(12);
-        doc.text("Evolução Semanal", 14, y);
-        y += 3;
+        y = checkPageBreak(doc, y, 50);
+        y = drawSectionTitle(doc, "Evolução Semanal — Abertos vs Resolvidos", y);
         autoTable(doc, {
           startY: y,
-          head: [["Semana", "Abertos", "Resolvidos"]],
+          head: [["Semana", "Chamados Abertos", "Chamados Resolvidos"]],
           body: weeklyEvolution.map(w => [w.semana, w.abertos, w.resolvidos]),
-          styles: { fontSize: 8, cellPadding: 3, halign: "center" },
-          headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
-          alternateRowStyles: { fillColor: [245, 247, 250] },
+          ...getTableStyles(),
+          styles: { ...getTableStyles().styles, halign: "center", fontSize: 8 },
         });
       }
 
-      // Footer
-      const pages = doc.getNumberOfPages();
-      for (let i = 1; i <= pages; i++) {
-        doc.setPage(i);
-        doc.setFontSize(7);
-        doc.setTextColor(150);
-        doc.text(`SAC VX INTEGRAÇÕES — Painel Executivo — Página ${i}/${pages}`, 14, doc.internal.pageSize.height - 8);
-      }
-
+      drawFooter(doc);
       doc.save(`painel-executivo-${format(new Date(), "yyyy-MM-dd")}.pdf`);
       toast.success("PDF exportado com sucesso");
     } catch (e) {
