@@ -115,17 +115,16 @@ export default function PainelExecutivo() {
     return Object.entries(map).map(([name, value]) => ({
       name, value, fill: colors[name] || "hsl(217, 91%, 60%)",
     }));
-  }, [chamados]);
+  }, [filtered]);
 
-  // Chart: top 5 transportadoras by failures
   const topTransp = useMemo(() => {
     const map = new Map<string, number>();
-    chamados.forEach(c => map.set(c.transportadora, (map.get(c.transportadora) || 0) + 1));
+    filtered.forEach(c => map.set(c.transportadora, (map.get(c.transportadora) || 0) + 1));
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([name, falhas]) => ({ name: name.length > 16 ? name.slice(0, 14) + "…" : name, falhas }));
-  }, [chamados]);
+  }, [filtered]);
 
   if (loading) return <div className="flex items-center justify-center py-20"><p className="text-muted-foreground">Carregando...</p></div>;
 
