@@ -126,6 +126,26 @@ export default function PainelExecutivo() {
       .map(([name, falhas]) => ({ name: name.length > 16 ? name.slice(0, 14) + "…" : name, falhas }));
   }, [filtered]);
 
+  // Weekly evolution: abertos vs resolvidos
+  const weeklyEvolution = useMemo(() => {
+    const weeks = 8;
+    const data: { semana: string; abertos: number; resolvidos: number }[] = [];
+    for (let i = weeks - 1; i >= 0; i--) {
+      const weekStart = startOfWeek(subWeeks(new Date(), i), { weekStartsOn: 1 });
+      const weekEnd = endOfWeek(weekStart, { weekStartsOn: 1 });
+      const label = format(weekStart, "dd/MM");
+      const abertos = filtered.filter(c => {
+        try { return isWithinInterval(parseISO(c.data_abertura), { start: weekStart, end: weekEnd }); } catch { return false; }
+      }).length;
+      const resolvidos = filtered.filter(c => {
+        if (!c.data_resolucao) return false;
+        try { return isWithinInterval(parseISO(c.data_resolucao), { start: weekStart, end: weekEnd }); } catch { return false; }
+      }).length;
+      data.push({ semana: label, abertos, resolvidos });
+    }
+    return data;
+  }, [filtered]);
+
   if (loading) return <div className="flex items-center justify-center py-20"><p className="text-muted-foreground">Carregando...</p></div>;
 
   return (
