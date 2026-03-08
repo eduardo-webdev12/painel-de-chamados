@@ -228,6 +228,27 @@ export default function PainelExecutivo() {
         </Card>
       </div>
 
+      {/* Weekly Evolution */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Evolução Semanal</CardTitle>
+          <CardDescription className="text-xs">Chamados abertos vs resolvidos nas últimas 8 semanas</CardDescription>
+        </CardHeader>
+        <CardContent className="h-[280px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={weeklyEvolution} margin={{ left: 0, right: 10, top: 5, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="semana" fontSize={10} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis fontSize={10} tick={{ fill: "hsl(var(--muted-foreground))" }} allowDecimals={false} />
+              <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
+              <Legend wrapperStyle={{ fontSize: 11 }} />
+              <Bar dataKey="abertos" name="Abertos" fill="hsl(0, 84%, 60%)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="resolvidos" name="Resolvidos" fill="hsl(142, 71%, 45%)" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </CardContent>
+      </Card>
+
       {/* Bottom Row */}
       <div className="grid gap-4 lg:grid-cols-2">
         {/* Top Transportadoras */}
