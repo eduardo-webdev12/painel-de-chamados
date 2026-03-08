@@ -134,7 +134,7 @@ export default function Confiabilidade() {
         },
       });
 
-      drawFooter(doc);
+      drawFooter(doc, true);
       doc.save(`confiabilidade-tecnologias-${format(new Date(), "yyyy-MM-dd")}.pdf`);
       toast.success("PDF exportado com sucesso");
     } catch (e) {
