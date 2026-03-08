@@ -289,7 +289,7 @@ export default function PainelExecutivo() {
             Visão consolidada da operação — {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </p>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 flex-wrap">
           {([7, 30, 90] as const).map(d => (
             <Button key={d} size="sm" variant={periodo === d ? "default" : "outline"} onClick={() => setPeriodo(d)}>
               {d}d
@@ -297,6 +297,9 @@ export default function PainelExecutivo() {
           ))}
           <Button size="sm" variant={periodo === null ? "default" : "outline"} onClick={() => setPeriodo(null)}>
             Tudo
+          </Button>
+          <Button size="sm" variant="outline" onClick={exportPDF} className="gap-1.5 ml-2">
+            <FileText className="h-4 w-4" /> PDF
           </Button>
         </div>
       </div>
