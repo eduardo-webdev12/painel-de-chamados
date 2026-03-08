@@ -103,7 +103,7 @@ export default function PainelExecutivo() {
   // Chart data: status distribution
   const statusDist = useMemo(() => {
     const map: Record<string, number> = {};
-    chamados.forEach(c => {
+    filtered.forEach(c => {
       const s = normalizarStatusChamado(c.status);
       map[s] = (map[s] || 0) + 1;
     });
