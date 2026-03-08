@@ -86,10 +86,10 @@ export default function PainelExecutivo() {
     return { total, abertos: abertos.length, resolvidosSemana: resolvidosSemana.length, mttr, taxaResolucao, totalRecorrencias, taxaRecorrencia, placasUnicas };
   }, [filtered]);
 
-  const techScores = useMemo(() => calcularScoreConfiabilidade(chamados), [chamados]);
-  const mtbfGlobal = useMemo(() => calcularMTBFGlobal(chamados), [chamados]);
-  const alertas = useMemo(() => gerarAlertasTempo(chamados), [chamados]);
-  const placasRisco = useMemo(() => analisarPlacas(chamados).filter(p => p.nivel === "critico" || p.nivel === "alto"), [chamados]);
+  const techScores = useMemo(() => calcularScoreConfiabilidade(filtered), [filtered]);
+  const mtbfGlobal = useMemo(() => calcularMTBFGlobal(filtered), [filtered]);
+  const alertas = useMemo(() => gerarAlertasTempo(filtered), [filtered]);
+  const placasRisco = useMemo(() => analisarPlacas(filtered).filter(p => p.nivel === "critico" || p.nivel === "alto"), [filtered]);
 
   const avgScore = techScores.length > 0 ? Math.round(techScores.reduce((s, t) => s + t.score, 0) / techScores.length) : 0;
 
