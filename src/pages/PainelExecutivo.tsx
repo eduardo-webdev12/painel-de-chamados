@@ -53,34 +53,38 @@ const KpiCard = ({ icon: Icon, label, value, sub, className = "" }: {
 export default function PainelExecutivo() {
   const { chamados, loading } = useChamados();
 
+  const [periodo, setPeriodo] = useState<7 | 30 | 90 | null>(30);
+
+  const filtered = useMemo(() => {
+    if (!periodo) return chamados;
+    const corte = subDays(new Date(), periodo);
+    return chamados.filter(c => isAfter(parseISO(c.data_abertura), corte));
+  }, [chamados, periodo]);
+
   const kpis = useMemo(() => {
     const hoje = new Date();
     const seteDias = subDays(hoje, 7);
-    const total = chamados.length;
-    const abertos = chamados.filter(c => {
+    const total = filtered.length;
+    const abertos = filtered.filter(c => {
       const s = normalizarStatusChamado(c.status);
       return s === "Aberto" || s === "Em Tratativa";
     });
-    const resolvidosTotal = chamados.filter(c => normalizarStatusChamado(c.status) === "Resolvido");
+    const resolvidosTotal = filtered.filter(c => normalizarStatusChamado(c.status) === "Resolvido");
     const resolvidosSemana = resolvidosTotal.filter(c => c.data_resolucao && isAfter(parseISO(c.data_resolucao), seteDias));
 
-    // MTTR global
-    const comTempo = chamados.filter(c => c.data_resolucao && c.hora_travou);
+    const comTempo = filtered.filter(c => c.data_resolucao && c.hora_travou);
     const tempos = comTempo.map(c => Math.max(0, differenceInMinutes(parseISO(c.data_resolucao!), parseISO(c.hora_travou!))));
     const mttr = tempos.length > 0 ? tempos.reduce((a, b) => a + b, 0) / tempos.length : 0;
 
-    // Taxa resolução
     const taxaResolucao = total > 0 ? (resolvidosTotal.length / total) * 100 : 0;
 
-    // Recorrências
-    const totalRecorrencias = chamados.reduce((s, c) => s + c.contagem_recorrencia, 0);
-    const taxaRecorrencia = total > 0 ? (chamados.filter(c => c.recorrente).length / total) * 100 : 0;
+    const totalRecorrencias = filtered.reduce((s, c) => s + c.contagem_recorrencia, 0);
+    const taxaRecorrencia = total > 0 ? (filtered.filter(c => c.recorrente).length / total) * 100 : 0;
 
-    // Placas únicas
-    const placasUnicas = new Set(chamados.map(c => c.placa.trim().toUpperCase())).size;
+    const placasUnicas = new Set(filtered.map(c => c.placa.trim().toUpperCase())).size;
 
     return { total, abertos: abertos.length, resolvidosSemana: resolvidosSemana.length, mttr, taxaResolucao, totalRecorrencias, taxaRecorrencia, placasUnicas };
-  }, [chamados]);
+  }, [filtered]);
 
   const techScores = useMemo(() => calcularScoreConfiabilidade(chamados), [chamados]);
   const mtbfGlobal = useMemo(() => calcularMTBFGlobal(chamados), [chamados]);
