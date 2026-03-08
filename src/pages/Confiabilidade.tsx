@@ -42,6 +42,8 @@ export default function Confiabilidade() {
   const placaScores = useMemo(() => calcularScorePlacas(chamados), [chamados]);
 
   const alertas = useMemo(() => techScores.filter(t => t.score < 60), [techScores]);
+  const evolucao = useMemo(() => calcularEvolucaoMensal(chamados, 6), [chamados]);
+  const techNames = useMemo(() => techScores.map(t => t.nome), [techScores]);
 
   const chartData = useMemo(() =>
     techScores.map(d => ({
