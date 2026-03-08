@@ -1,4 +1,4 @@
-import { LayoutDashboard, List, PlusCircle, FileText, Settings, Activity, Car, Truck, Cpu, Radio, Users } from "lucide-react";
+import { LayoutDashboard, List, PlusCircle, FileText, Settings, Activity, Car, Truck, Cpu, Radio, Users, Shield } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -19,6 +19,7 @@ const operacionalItems = [
   { title: "Histórico Placas", url: "/historico-placas", icon: Car },
   { title: "Transportadoras", url: "/transportadoras", icon: Truck },
   { title: "Tecnologias", url: "/tecnologias", icon: Cpu },
+  { title: "Confiabilidade", url: "/confiabilidade", icon: Shield },
 ];
 
 const sistemaItems = [

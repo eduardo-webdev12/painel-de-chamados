@@ -180,3 +180,157 @@ export const RISCO_CONFIG: Record<NivelRisco, { label: string; color: string; bg
   medio: { label: "Atenção", color: "text-yellow-600 dark:text-yellow-400", bg: "bg-yellow-500/10 border-yellow-400/30", icon: "🟡" },
   baixo: { label: "Normal", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 border-emerald-400/30", icon: "🟢" },
 };
+
+// ─── Score de Confiabilidade ─────────────────────────────
+export type ScoreClassificacao = "excelente" | "bom" | "instavel" | "critico";
+
+export interface TecnologiaScore {
+  nome: string;
+  score: number;
+  classificacao: ScoreClassificacao;
+  totalFalhas: number;
+  totalPlacas: number;
+  taxaTravamento: number;       // falhas / placas
+  tempoMedioResolucao: number;  // minutes
+  taxaRecorrencia: number;      // recorrencias / chamados
+  mtbf: number | null;          // minutes
+  recorrencias: number;
+}
+
+export const SCORE_CONFIG: Record<ScoreClassificacao, { label: string; color: string; bg: string; icon: string }> = {
+  excelente: { label: "Excelente", color: "text-emerald-600 dark:text-emerald-400", bg: "bg-emerald-500/10 border-emerald-400/30", icon: "🟢" },
+  bom:       { label: "Bom",       color: "text-blue-600 dark:text-blue-400",    bg: "bg-blue-500/10 border-blue-400/30",    icon: "🟡" },
+  instavel:  { label: "Instável",  color: "text-orange-600 dark:text-orange-400", bg: "bg-orange-500/10 border-orange-400/30", icon: "🟠" },
+  critico:   { label: "Crítico",   color: "text-destructive",                     bg: "bg-destructive/10 border-destructive/30", icon: "🔴" },
+};
+
+function classificarScore(score: number): ScoreClassificacao {
+  if (score >= 85) return "excelente";
+  if (score >= 70) return "bom";
+  if (score >= 50) return "instavel";
+  return "critico";
+}
+
+/**
+ * Score de Confiabilidade (0-100)
+ * Weights: taxa travamento 35%, MTTR 25%, recorrência 25%, MTBF 15%
+ */
+export function calcularScoreConfiabilidade(chamados: ChamadoDB[]): TecnologiaScore[] {
+  if (chamados.length === 0) return [];
+
+  const tecMap = new Map<string, ChamadoDB[]>();
+  const placasPorTec = new Map<string, Set<string>>();
+
+  chamados.forEach(c => {
+    const tec = c.tecnologia;
+    if (!tecMap.has(tec)) { tecMap.set(tec, []); placasPorTec.set(tec, new Set()); }
+    tecMap.get(tec)!.push(c);
+    placasPorTec.get(tec)!.add(c.placa.trim().toUpperCase());
+  });
+
+  // Global maxes for normalization
+  let maxTaxaTrav = 0, maxMTTR = 0, maxTaxaRec = 0;
+  const rawData: Array<{ nome: string; ocs: ChamadoDB[]; placas: number; taxaTrav: number; mttr: number; taxaRec: number; mtbf: number | null; recorrencias: number }> = [];
+
+  tecMap.forEach((ocs, nome) => {
+    const placas = placasPorTec.get(nome)!.size || 1;
+    const taxaTrav = ocs.length / placas;
+
+    const resolvidos = ocs.filter(o => o.data_resolucao && o.hora_travou);
+    const tempos = resolvidos.map(o => Math.max(0, differenceInMinutes(parseISO(o.data_resolucao!), parseISO(o.hora_travou!))));
+    const mttr = tempos.length > 0 ? tempos.reduce((a, b) => a + b, 0) / tempos.length : 0;
+
+    const recorrencias = ocs.filter(o => o.recorrente).length;
+    const taxaRec = ocs.length > 0 ? recorrencias / ocs.length : 0;
+
+    const mtbf = calcularMTBF(ocs);
+
+    maxTaxaTrav = Math.max(maxTaxaTrav, taxaTrav);
+    maxMTTR = Math.max(maxMTTR, mttr);
+    maxTaxaRec = Math.max(maxTaxaRec, taxaRec);
+
+    rawData.push({ nome, ocs, placas, taxaTrav, mttr, taxaRec, mtbf, recorrencias });
+  });
+
+  // Normalize and compute score
+  return rawData.map(d => {
+    // Lower is better for these → invert: score_component = 1 - (value / max)
+    const normTrav = maxTaxaTrav > 0 ? 1 - (d.taxaTrav / maxTaxaTrav) : 1;
+    const normMTTR = maxMTTR > 0 ? 1 - (d.mttr / maxMTTR) : 1;
+    const normRec  = maxTaxaRec > 0 ? 1 - (d.taxaRec / maxTaxaRec) : 1;
+
+    // Higher MTBF is better → normalize directly
+    // Use 7 days as reference ceiling
+    const mtbfRef = 10080; // 7 days in minutes
+    const normMTBF = d.mtbf !== null ? Math.min(d.mtbf / mtbfRef, 1) : 0.5;
+
+    const score = Math.round(
+      normTrav * 35 + normMTTR * 25 + normRec * 25 + normMTBF * 15
+    );
+
+    const clampedScore = Math.max(0, Math.min(100, score));
+
+    return {
+      nome: d.nome,
+      score: clampedScore,
+      classificacao: classificarScore(clampedScore),
+      totalFalhas: d.ocs.length,
+      totalPlacas: d.placas,
+      taxaTravamento: d.taxaTrav,
+      tempoMedioResolucao: d.mttr,
+      taxaRecorrencia: d.taxaRec,
+      mtbf: d.mtbf,
+      recorrencias: d.recorrencias,
+    };
+  }).sort((a, b) => b.score - a.score);
+}
+
+// ─── Score por Placa ─────────────────────────────────────
+export interface PlacaScore {
+  placa: string;
+  score: number;
+  classificacao: ScoreClassificacao;
+  totalOcorrencias: number;
+  recorrencias: number;
+  tempoTotalTravada: number; // minutes
+  tecnologias: string[];
+}
+
+export function calcularScorePlacas(chamados: ChamadoDB[]): PlacaScore[] {
+  if (chamados.length === 0) return [];
+  const map = new Map<string, ChamadoDB[]>();
+  chamados.forEach(c => {
+    const k = c.placa.trim().toUpperCase();
+    if (!map.has(k)) map.set(k, []);
+    map.get(k)!.push(c);
+  });
+
+  let maxOc = 0, maxRec = 0, maxTempo = 0;
+  const raw: Array<{ placa: string; ocs: ChamadoDB[]; totalRec: number; tempoTotal: number }> = [];
+
+  map.forEach((ocs, placa) => {
+    const totalRec = ocs.reduce((s, c) => s + c.contagem_recorrencia, 0);
+    const tempoTotal = ocs.filter(o => o.data_resolucao && o.hora_travou)
+      .reduce((s, o) => s + Math.max(0, differenceInMinutes(parseISO(o.data_resolucao!), parseISO(o.hora_travou!))), 0);
+    maxOc = Math.max(maxOc, ocs.length);
+    maxRec = Math.max(maxRec, totalRec);
+    maxTempo = Math.max(maxTempo, tempoTotal);
+    raw.push({ placa, ocs, totalRec, tempoTotal });
+  });
+
+  return raw.map(d => {
+    const nOc = maxOc > 0 ? 1 - (d.ocs.length / maxOc) : 1;
+    const nRec = maxRec > 0 ? 1 - (d.totalRec / maxRec) : 1;
+    const nTempo = maxTempo > 0 ? 1 - (d.tempoTotal / maxTempo) : 1;
+    const score = Math.max(0, Math.min(100, Math.round(nOc * 40 + nRec * 35 + nTempo * 25)));
+    return {
+      placa: d.placa,
+      score,
+      classificacao: classificarScore(score),
+      totalOcorrencias: d.ocs.length,
+      recorrencias: d.totalRec,
+      tempoTotalTravada: d.tempoTotal,
+      tecnologias: [...new Set(d.ocs.map(c => c.tecnologia))],
+    };
+  }).sort((a, b) => b.score - a.score);
+}

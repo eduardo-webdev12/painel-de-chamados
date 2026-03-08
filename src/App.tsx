@@ -17,6 +17,7 @@ import AcompanhamentoOperacional from "./pages/AcompanhamentoOperacional";
 import HistoricoPlacas from "./pages/HistoricoPlacas";
 import Transportadoras from "./pages/Transportadoras";
 import Tecnologias from "./pages/Tecnologias";
+import Confiabilidade from "./pages/Confiabilidade";
 import Monitoramento from "./pages/Monitoramento";
 import GestaoUsuarios from "./pages/GestaoUsuarios";
 import NotFound from "./pages/NotFound";
@@ -49,6 +50,7 @@ function ProtectedRoutes() {
         <Route path="/historico-placas" element={<HistoricoPlacas />} />
         <Route path="/transportadoras" element={<Transportadoras />} />
         <Route path="/tecnologias" element={<Tecnologias />} />
+        <Route path="/confiabilidade" element={<Confiabilidade />} />
         <Route path="/monitoramento" element={<Monitoramento />} />
         <Route path="/gestao-usuarios" element={<GestaoUsuarios />} />
         <Route path="*" element={<NotFound />} />
