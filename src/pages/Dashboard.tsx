@@ -585,6 +585,7 @@ export default function Dashboard() {
         </motion.div>
       )}
 
+      {viewMode === "executivo" ? (
         <>
           {/* ─── Executive Rankings ─────────────────────── */}
           <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
