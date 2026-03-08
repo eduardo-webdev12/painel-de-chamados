@@ -130,15 +130,26 @@ export default function PainelExecutivo() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-primary" />
-          Painel Executivo
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Visão consolidada da operação — {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <BarChart3 className="h-6 w-6 text-primary" />
+            Painel Executivo
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Visão consolidada da operação — {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          </p>
+        </div>
+        <div className="flex gap-1.5">
+          {([7, 30, 90] as const).map(d => (
+            <Button key={d} size="sm" variant={periodo === d ? "default" : "outline"} onClick={() => setPeriodo(d)}>
+              {d}d
+            </Button>
+          ))}
+          <Button size="sm" variant={periodo === null ? "default" : "outline"} onClick={() => setPeriodo(null)}>
+            Tudo
+          </Button>
+        </div>
       </div>
 
       {/* KPI Row 1 */}
