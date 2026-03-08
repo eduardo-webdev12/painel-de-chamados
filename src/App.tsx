@@ -18,6 +18,7 @@ import HistoricoPlacas from "./pages/HistoricoPlacas";
 import Transportadoras from "./pages/Transportadoras";
 import Tecnologias from "./pages/Tecnologias";
 import Confiabilidade from "./pages/Confiabilidade";
+import PainelExecutivo from "./pages/PainelExecutivo";
 import Monitoramento from "./pages/Monitoramento";
 import GestaoUsuarios from "./pages/GestaoUsuarios";
 import NotFound from "./pages/NotFound";
