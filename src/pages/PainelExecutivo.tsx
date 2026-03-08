@@ -152,7 +152,7 @@ export default function PainelExecutivo() {
       const { default: jsPDF } = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
       const { getLogoBase64 } = await import("@/lib/logo-base64");
-      const { drawHeader, drawSectionTitle, drawFooter, getTableStyles, getKpiTableStyles, checkPageBreak, BRAND } = await import("@/lib/pdfTheme");
+      const { drawCoverPage, drawHeader, drawSectionTitle, drawFooter, drawKpiCards, getTableStyles, getKpiTableStyles, checkPageBreak, BRAND } = await import("@/lib/pdfTheme");
 
       const doc = new jsPDF({ orientation: "landscape" });
       const now = format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR });
@@ -161,10 +161,18 @@ export default function PainelExecutivo() {
       let logo: string | null = null;
       try { logo = await getLogoBase64(); } catch {}
 
-      let y = drawHeader({
+      drawCoverPage({
         doc, logo,
         title: "Painel Executivo",
         subtitle: "Visão consolidada da operação de monitoramento",
+        periodo: periodoLabel,
+        geradoEm: now,
+      });
+
+      let y = drawHeader({
+        doc, logo,
+        title: "Painel Executivo",
+        subtitle: "Indicadores operacionais e estratégicos",
         meta: [`Gerado em: ${now}`, `Período: ${periodoLabel}`, `Chamados: ${kpis.total}`],
       });
 
