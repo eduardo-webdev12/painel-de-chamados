@@ -7,7 +7,7 @@ import {
   SCORE_CONFIG, type TecnologiaScore, type PlacaScore,
 } from "@/lib/nocAnalytics";
 import { Shield, AlertTriangle, TrendingUp, Cpu, Car, Timer, RotateCcw, Zap, Award } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend } from "recharts";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";

@@ -334,3 +334,40 @@ export function calcularScorePlacas(chamados: ChamadoDB[]): PlacaScore[] {
     };
   }).sort((a, b) => b.score - a.score);
 }
+
+// ─── Evolução Mensal do Score ────────────────────────────
+import { format, startOfMonth, subMonths } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+export interface EvolucaoMensalItem {
+  mes: string; // "Jan/26"
+  [tecnologia: string]: string | number; // dynamic keys per tech
+}
+
+export function calcularEvolucaoMensal(chamados: ChamadoDB[], meses = 6): EvolucaoMensalItem[] {
+  if (chamados.length === 0) return [];
+
+  const now = new Date();
+  const buckets: { start: Date; label: string }[] = [];
+  for (let i = meses - 1; i >= 0; i--) {
+    const d = startOfMonth(subMonths(now, i));
+    buckets.push({ start: d, label: format(d, "MMM/yy", { locale: ptBR }) });
+  }
+
+  // All techs
+  const allTechs = [...new Set(chamados.map(c => c.tecnologia))];
+
+  return buckets.map(({ start, label }) => {
+    const nextMonth = subMonths(start, -1);
+    // Chamados up to end of this month
+    const chamadosAteMes = chamados.filter(c => new Date(c.data_abertura) < nextMonth);
+    const scores = calcularScoreConfiabilidade(chamadosAteMes);
+    const scoreMap = new Map(scores.map(s => [s.nome, s.score]));
+
+    const item: EvolucaoMensalItem = { mes: label };
+    allTechs.forEach(t => {
+      item[t] = scoreMap.get(t) ?? 0;
+    });
+    return item;
+  });
+}
