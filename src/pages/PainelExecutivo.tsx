@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useChamados } from "@/hooks/useChamados";
@@ -10,13 +10,14 @@ import {
 import { normalizarStatusChamado } from "@/lib/chamadoWorkflow";
 import {
   Shield, Activity, Clock, Timer, RotateCcw, AlertTriangle, TrendingUp,
-  CheckCircle2, Cpu, Car, Truck, Zap, Award, BarChart3,
+  CheckCircle2, Cpu, Car, Truck, Zap, Award, BarChart3, FileText,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   Cell, PieChart, Pie, LineChart, Line, Legend,
 } from "recharts";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { differenceInMinutes, parseISO, format, subDays, subWeeks, startOfWeek, endOfWeek, isAfter, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -146,6 +147,134 @@ export default function PainelExecutivo() {
     return data;
   }, [filtered]);
 
+  const exportPDF = useCallback(async () => {
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+      const { getLogoBase64 } = await import("@/lib/logo-base64");
+
+      const doc = new jsPDF({ orientation: "landscape" });
+      const now = format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR });
+      const periodoLabel = periodo ? `Últimos ${periodo} dias` : "Todos os períodos";
+      let y = 8;
+
+      // Logo
+      try {
+        const logo = await getLogoBase64();
+        doc.addImage(logo, "PNG", 14, y, 20, 20);
+      } catch {}
+
+      // Header
+      doc.setFontSize(18);
+      doc.text("Painel Executivo — SAC VX Integrações", 40, y + 10);
+      doc.setFontSize(9);
+      doc.setTextColor(100);
+      doc.text(`Gerado em ${now}  •  Período: ${periodoLabel}`, 40, y + 17);
+      doc.setTextColor(0);
+      y = 35;
+
+      // KPIs table
+      doc.setFontSize(12);
+      doc.text("KPIs Operacionais", 14, y);
+      y += 3;
+      autoTable(doc, {
+        startY: y,
+        head: [["Score Médio", "MTTR Global", "MTBF Global", "Taxa Resolução", "Abertos", "Placas", "Recorrência", "Alertas"]],
+        body: [[
+          `${avgScore} pts`,
+          formatTempo(kpis.mttr),
+          mtbfGlobal,
+          `${kpis.taxaResolucao.toFixed(1)}%`,
+          `${kpis.abertos} / ${kpis.total}`,
+          kpis.placasUnicas,
+          `${kpis.taxaRecorrencia.toFixed(1)}%`,
+          alertas.length,
+        ]],
+        styles: { fontSize: 9, cellPadding: 4, halign: "center" },
+        headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
+
+      // Score ranking table
+      doc.setFontSize(12);
+      doc.text("Ranking de Confiabilidade", 14, y);
+      y += 3;
+      autoTable(doc, {
+        startY: y,
+        head: [["#", "Tecnologia", "Score", "Status", "Placas", "Falhas", "MTTR", "Recorrência", "MTBF"]],
+        body: techScores.map((d, i) => [
+          i + 1,
+          d.nome,
+          d.score,
+          SCORE_CONFIG[d.classificacao].label,
+          d.totalPlacas,
+          d.totalFalhas,
+          formatTempo(d.tempoMedioResolucao),
+          `${(d.taxaRecorrencia * 100).toFixed(1)}%`,
+          d.mtbf !== null ? formatTempo(d.mtbf) : "—",
+        ]),
+        styles: { fontSize: 8, cellPadding: 3 },
+        headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
+
+      // Placas em risco
+      if (placasRisco.length > 0) {
+        if (y > 160) { doc.addPage(); y = 15; }
+        doc.setFontSize(12);
+        doc.text("Placas em Risco", 14, y);
+        y += 3;
+        autoTable(doc, {
+          startY: y,
+          head: [["Placa", "Nível", "Ocorrências", "Recorrências", "Tecnologias"]],
+          body: placasRisco.slice(0, 15).map(p => [
+            p.placa,
+            RISCO_CONFIG[p.nivel].label,
+            p.totalOcorrencias,
+            p.recorrencias,
+            p.tecnologias.join(", "),
+          ]),
+          styles: { fontSize: 8, cellPadding: 3 },
+          headStyles: { fillColor: [220, 50, 50], textColor: 255, fontStyle: "bold" },
+          alternateRowStyles: { fillColor: [255, 245, 245] },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+      }
+
+      // Weekly evolution table
+      if (weeklyEvolution.length > 0) {
+        if (y > 160) { doc.addPage(); y = 15; }
+        doc.setFontSize(12);
+        doc.text("Evolução Semanal", 14, y);
+        y += 3;
+        autoTable(doc, {
+          startY: y,
+          head: [["Semana", "Abertos", "Resolvidos"]],
+          body: weeklyEvolution.map(w => [w.semana, w.abertos, w.resolvidos]),
+          styles: { fontSize: 8, cellPadding: 3, halign: "center" },
+          headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
+          alternateRowStyles: { fillColor: [245, 247, 250] },
+        });
+      }
+
+      // Footer
+      const pages = doc.getNumberOfPages();
+      for (let i = 1; i <= pages; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setTextColor(150);
+        doc.text(`SAC VX INTEGRAÇÕES — Painel Executivo — Página ${i}/${pages}`, 14, doc.internal.pageSize.height - 8);
+      }
+
+      doc.save(`painel-executivo-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+      toast.success("PDF exportado com sucesso");
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao gerar PDF");
+    }
+  }, [techScores, kpis, avgScore, mtbfGlobal, alertas, placasRisco, weeklyEvolution, periodo]);
+
   if (loading) return <div className="flex items-center justify-center py-20"><p className="text-muted-foreground">Carregando...</p></div>;
 
   return (
@@ -160,7 +289,7 @@ export default function PainelExecutivo() {
             Visão consolidada da operação — {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </p>
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex gap-1.5 flex-wrap">
           {([7, 30, 90] as const).map(d => (
             <Button key={d} size="sm" variant={periodo === d ? "default" : "outline"} onClick={() => setPeriodo(d)}>
               {d}d
@@ -168,6 +297,9 @@ export default function PainelExecutivo() {
           ))}
           <Button size="sm" variant={periodo === null ? "default" : "outline"} onClick={() => setPeriodo(null)}>
             Tudo
+          </Button>
+          <Button size="sm" variant="outline" onClick={exportPDF} className="gap-1.5 ml-2">
+            <FileText className="h-4 w-4" /> PDF
           </Button>
         </div>
       </div>
