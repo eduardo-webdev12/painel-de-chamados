@@ -126,21 +126,28 @@ export default function DetalhesChamado() {
 
   const handleEnviarWhatsApp = () => {
     if (!chamado) return;
-    if (!whatsappNumero) {
-      toast({ title: "Número não cadastrado", description: "Cadastre o número WhatsApp da tecnologia nas Configurações ou abaixo.", variant: "destructive" });
-      return;
+    const fotoAnexo = (chamado as any).anexo_foto_url as string | null;
+
+    // Pre-send validation
+    const erros = validarPreEnvioWhatsApp({ whatsappNumero, placa: chamado.placa, fotoUrl: fotoAnexo });
+    if (erros.length > 0) {
+      toast({
+        title: "Verificação pré-envio",
+        description: erros.join(" "),
+        variant: "destructive",
+      });
+      // Allow send without photo but warn
+      if (erros.some(e => e.includes("Número"))) return;
     }
 
     try {
-      const horaStr = chamado.hora_travou ? format(parseISO(chamado.hora_travou), "HH:mm") : "horário não informado";
-      const fotoAnexo = (chamado as any).anexo_foto_url as string | null;
-      let msg = gerarMensagemWhatsApp(chamado.placa, horaStr, profile?.nome, chamado.tecnologia);
+      let msg = gerarMensagemWhatsApp(chamado.placa, "", profile?.nome, chamado.tecnologia);
       if (fotoAnexo) {
         msg += `\n\n📎 Print da ocorrência:\n${fotoAnexo}`;
       }
       abrirWhatsApp(whatsappNumero, msg);
-      addHistorico("Mensagem WhatsApp enviada", `Tecnologia: ${chamado.tecnologia}`);
-      toast({ title: "Mensagem preparada", description: "WhatsApp aberto com a mensagem padrão e o link do print." });
+      addHistorico("Mensagem WhatsApp enviada", `Tecnologia: ${chamado.tecnologia}${fotoAnexo ? " • Com print anexado" : " • Sem print"}`);
+      toast({ title: "WhatsApp aberto", description: "Mensagem padronizada e link do print enviados." });
     } catch (err: any) {
       toast({ title: "Erro ao abrir WhatsApp", description: err?.message || "Verifique número e dados do chamado.", variant: "destructive" });
     }
