@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useChamados, ChamadoDB } from "@/hooks/useChamados";
 import { normalizarStatusChamado } from "@/lib/chamadoWorkflow";
+import { analisarPlacas, calcularMTBFGlobal, gerarAlertasTempo, RISCO_CONFIG, type NivelRisco } from "@/lib/nocAnalytics";
 import { motion } from "framer-motion";
 import {
   PlusCircle, AlertTriangle, Clock, CheckCircle2, Inbox, RotateCcw,
   TrendingUp, Percent, Truck, Cpu, User, CalendarDays, Timer,
   ShieldOff, Lock, Bell, Activity, BarChart3, Target, Zap,
-  TrendingDown, Award, Flame, Eye, Gauge
+  TrendingDown, Award, Flame, Eye, Gauge, Shield, Radio
 } from "lucide-react";
 import { format, isToday, isYesterday, subDays, parseISO, isAfter, differenceInMinutes, differenceInHours, getHours, startOfMonth, subMonths, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
