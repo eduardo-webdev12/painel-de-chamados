@@ -153,7 +153,41 @@ export default function Confiabilidade() {
         </CardContent>
       </Card>
 
-      {/* Tabs: Tecnologias / Placas */}
+      {/* Evolução Mensal */}
+      {evolucao.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Evolução Mensal do Score</CardTitle>
+            <CardDescription className="text-xs">Tendência de confiabilidade por tecnologia nos últimos 6 meses</CardDescription>
+          </CardHeader>
+          <CardContent className="h-[340px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={evolucao} margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="mes" fontSize={10} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis domain={[0, 100]} fontSize={10} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: number) => [`${v} pts`]} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                {techNames.map((name, i) => {
+                  const colors = ["hsl(142,71%,45%)", "hsl(217,91%,60%)", "hsl(25,95%,53%)", "hsl(0,84%,60%)", "hsl(262,83%,58%)", "hsl(180,70%,45%)", "hsl(45,93%,47%)"];
+                  return (
+                    <Line
+                      key={name}
+                      type="monotone"
+                      dataKey={name}
+                      stroke={colors[i % colors.length]}
+                      strokeWidth={2}
+                      dot={{ r: 3 }}
+                      activeDot={{ r: 5 }}
+                    />
+                  );
+                })}
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
           <TabsTrigger value="tecnologias" className="gap-1.5"><Cpu className="h-3.5 w-3.5" /> Tecnologias</TabsTrigger>
