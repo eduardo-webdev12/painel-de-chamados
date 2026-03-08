@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useChamados } from "@/hooks/useChamados";
 import {
-  calcularScoreConfiabilidade, calcularScorePlacas,
+  calcularScoreConfiabilidade, calcularScorePlacas, calcularEvolucaoMensal,
   SCORE_CONFIG, type TecnologiaScore, type PlacaScore,
 } from "@/lib/nocAnalytics";
 import { Shield, AlertTriangle, TrendingUp, Cpu, Car, Timer, RotateCcw, Zap, Award } from "lucide-react";
