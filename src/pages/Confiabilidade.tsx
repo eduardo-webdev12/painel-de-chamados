@@ -66,30 +66,46 @@ export default function Confiabilidade() {
       const { default: jsPDF } = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
       const { getLogoBase64 } = await import("@/lib/logo-base64");
+      const { drawHeader, drawSectionTitle, drawFooter, getTableStyles, getKpiTableStyles, checkPageBreak } = await import("@/lib/pdfTheme");
 
       const doc = new jsPDF({ orientation: "landscape" });
       const now = format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR });
 
-      // Logo + header
-      try {
-        const logo = await getLogoBase64();
-        doc.addImage(logo, "PNG", 14, 8, 22, 22);
-      } catch {}
-      doc.setFontSize(16);
-      doc.text("Relatório de Confiabilidade — Tecnologias", 42, 18);
-      doc.setFontSize(9);
-      doc.setTextColor(120);
-      doc.text(`SAC VX INTEGRAÇÕES  •  Gerado em ${now}  •  Score Médio: ${avgScore} pts`, 42, 25);
-      doc.setTextColor(0);
+      let logo: string | null = null;
+      try { logo = await getLogoBase64(); } catch {}
 
-      // Table
+      let y = drawHeader({
+        doc, logo,
+        title: "Score de Confiabilidade",
+        subtitle: "Análise de estabilidade das tecnologias de rastreamento",
+        meta: [`Gerado em: ${now}`, `Score Médio: ${avgScore} pts`, `Tecnologias: ${techScores.length}`],
+      });
+
+      // Summary KPI
+      y = drawSectionTitle(doc, "Resumo Geral", y);
       autoTable(doc, {
-        startY: 35,
+        startY: y,
+        head: [["Score Médio", "Tecnologias", "Excelentes (≥85)", "Instáveis (<60)"]],
+        body: [[
+          `${avgScore} pts`,
+          techScores.length,
+          techScores.filter(t => t.score >= 85).length,
+          techScores.filter(t => t.score < 60).length,
+        ]],
+        ...getKpiTableStyles(),
+      });
+      y = (doc as any).lastAutoTable.finalY + 10;
+
+      // Ranking table
+      y = checkPageBreak(doc, y, 60);
+      y = drawSectionTitle(doc, "Ranking Detalhado por Tecnologia", y);
+      autoTable(doc, {
+        startY: y,
         head: [["#", "Tecnologia", "Score", "Status", "Placas", "Falhas", "MTTR", "Recorrência %", "MTBF"]],
         body: techScores.map((d, i) => [
           i + 1,
           d.nome,
-          d.score,
+          `${d.score} pts`,
           SCORE_CONFIG[d.classificacao].label,
           d.totalPlacas,
           d.totalFalhas,
@@ -97,11 +113,20 @@ export default function Confiabilidade() {
           `${(d.taxaRecorrencia * 100).toFixed(1)}%`,
           d.mtbf !== null ? formatTempo(d.mtbf) : "—",
         ]),
-        styles: { fontSize: 9, cellPadding: 3 },
-        headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
-        alternateRowStyles: { fillColor: [245, 247, 250] },
+        ...getTableStyles(),
+        columnStyles: {
+          0: { halign: "center", cellWidth: 10 },
+          2: { halign: "center", fontStyle: "bold" },
+          3: { halign: "center" },
+          4: { halign: "center" },
+          5: { halign: "center" },
+          6: { halign: "center" },
+          7: { halign: "center" },
+          8: { halign: "center" },
+        },
       });
 
+      drawFooter(doc);
       doc.save(`confiabilidade-tecnologias-${format(new Date(), "yyyy-MM-dd")}.pdf`);
       toast.success("PDF exportado com sucesso");
     } catch (e) {

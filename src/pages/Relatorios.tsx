@@ -51,84 +51,41 @@ export default function Relatorios() {
     toast({ title: "Excel exportado com sucesso" });
   };
 
-  const loadLogoAsBase64 = (): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = "anonymous";
-      img.onload = () => {
-        const canvas = document.createElement("canvas");
-        canvas.width = img.naturalWidth;
-        canvas.height = img.naturalHeight;
-        const ctx = canvas.getContext("2d");
-        ctx?.drawImage(img, 0, 0);
-        resolve(canvas.toDataURL("image/png"));
-      };
-      img.onerror = reject;
-      img.src = logoVX;
-    });
-  };
-
   const exportPDF = async () => {
     const { default: jsPDF } = await import("jspdf");
-    const autoTable = (await import("jspdf-autotable")).default;
+    const { default: autoTable } = await import("jspdf-autotable");
+    const { getLogoBase64 } = await import("@/lib/logo-base64");
+    const { drawHeader, drawSectionTitle, drawFooter, getTableStyles } = await import("@/lib/pdfTheme");
 
     const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-    const pageW = doc.internal.pageSize.getWidth();
     const now = new Date();
 
-    // === HEADER ===
-    // Logo - proportional, left-aligned
-    try {
-      const logoData = await loadLogoAsBase64();
-      // Draw logo proportionally (max 35mm wide, ~13mm tall)
-      doc.addImage(logoData, "PNG", 14, 8, 35, 13);
-    } catch {
-      console.warn("Logo não carregado");
-    }
+    let logo: string | null = null;
+    try { logo = await getLogoBase64(); } catch {}
 
-    // Company info - right of logo
-    doc.setFontSize(13);
-    doc.setFont("helvetica", "bold");
-    doc.text("VX INTEGRAÇÕES", 55, 13);
+    const periodoStr = dataInicio || dataFim
+      ? `${dataInicio || "—"} a ${dataFim || "—"}`
+      : "Todos os períodos";
 
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.text("PLATAFORMA SAC VX INTEGRAÇÕES", 55, 18);
+    let y = drawHeader({
+      doc, logo,
+      title: "Relatório de Posição",
+      subtitle: "Plataforma SAC VX Integrações — Relatório Corporativo",
+      meta: [
+        `Gerado em: ${format(now, "dd/MM/yyyy 'às' HH:mm")}`,
+        `Período: ${periodoStr}`,
+        `Registros: ${filtrados.length}`,
+      ],
+    });
 
-    doc.setFontSize(9);
-    doc.setFont("helvetica", "bold");
-    doc.text("Relatório de Posição", 55, 23);
+    y = drawSectionTitle(doc, "Listagem de Chamados", y);
 
-    // Horizontal line
-    doc.setDrawColor(30, 64, 124);
-    doc.setLineWidth(0.6);
-    doc.line(14, 26, pageW - 14, 26);
-
-    // Report metadata
-    doc.setFontSize(7.5);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(80, 80, 80);
-    doc.text(`Data da extração: ${format(now, "dd/MM/yyyy 'às' HH:mm")}`, 14, 30);
-    doc.text(`Total de registros: ${filtrados.length}`, pageW / 2, 30, { align: "center" });
-    if (dataInicio || dataFim) {
-      doc.text(`Período: ${dataInicio || "—"} a ${dataFim || "—"}`, pageW - 14, 30, { align: "right" });
-    }
-    doc.setTextColor(0, 0, 0);
-
-    // === TABLE ===
     autoTable(doc, {
-      startY: 34,
+      startY: y,
       head: [[
-        "Placa",
-        "Transportadora",
-        "Tecnologia",
-        "Status",
-        "Hora Travou",
-        "Tempo Travado",
-        "Abertura",
-        "Criado por",
-        "Finalizado por",
-        "Observações",
+        "Placa", "Transportadora", "Tecnologia", "Status",
+        "Hora Travou", "Tempo Travado", "Abertura",
+        "Criado por", "Finalizado por", "Observações",
       ]],
       body: filtrados.map((c) => [
         c.placa,
@@ -142,27 +99,16 @@ export default function Relatorios() {
         c.finalizado_por_nome || "—",
         c.observacao ? c.observacao.substring(0, 40) : "",
       ]),
+      ...getTableStyles(),
       styles: {
+        ...getTableStyles().styles,
         fontSize: 6.5,
-        cellPadding: 2,
-        lineColor: [200, 200, 200],
-        lineWidth: 0.2,
-      },
-      headStyles: {
-        fillColor: [30, 64, 124],
-        textColor: [255, 255, 255],
-        fontStyle: "bold",
-        fontSize: 7,
-        halign: "center",
-      },
-      alternateRowStyles: {
-        fillColor: [245, 247, 250],
       },
       columnStyles: {
-        0: { cellWidth: 20, halign: "center" },
+        0: { cellWidth: 20, halign: "center", fontStyle: "bold" },
         1: { cellWidth: 30 },
         2: { cellWidth: 22 },
-        3: { cellWidth: 28 },
+        3: { cellWidth: 28, halign: "center" },
         4: { cellWidth: 22, halign: "center" },
         5: { cellWidth: 18, halign: "center" },
         6: { cellWidth: 22, halign: "center" },
@@ -170,20 +116,9 @@ export default function Relatorios() {
         8: { cellWidth: 25 },
         9: { cellWidth: "auto" },
       },
-      didDrawPage: (data: any) => {
-        // Footer
-        const pageCount = (doc as any).internal.getNumberOfPages();
-        doc.setFontSize(7);
-        doc.setTextColor(120, 120, 120);
-        doc.text(
-          `Página ${data.pageNumber} de ${pageCount} — Plataforma SAC VX Integrações`,
-          pageW / 2,
-          doc.internal.pageSize.getHeight() - 8,
-          { align: "center" }
-        );
-      },
     });
 
+    drawFooter(doc);
     doc.save(`relatorio-posicao-${format(now, "yyyy-MM-dd")}.pdf`);
     toast({ title: "PDF exportado com sucesso" });
   };
