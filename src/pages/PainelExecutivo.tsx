@@ -264,7 +264,7 @@ export default function PainelExecutivo() {
         });
       }
 
-      drawFooter(doc);
+      drawFooter(doc, true);
       doc.save(`painel-executivo-${format(new Date(), "yyyy-MM-dd")}.pdf`);
       toast.success("PDF exportado com sucesso");
     } catch (e) {

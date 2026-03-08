@@ -66,13 +66,21 @@ export default function Confiabilidade() {
       const { default: jsPDF } = await import("jspdf");
       const { default: autoTable } = await import("jspdf-autotable");
       const { getLogoBase64 } = await import("@/lib/logo-base64");
-      const { drawHeader, drawSectionTitle, drawFooter, getTableStyles, getKpiTableStyles, checkPageBreak } = await import("@/lib/pdfTheme");
+      const { drawCoverPage, drawHeader, drawSectionTitle, drawFooter, getTableStyles, getKpiTableStyles, checkPageBreak } = await import("@/lib/pdfTheme");
 
       const doc = new jsPDF({ orientation: "landscape" });
       const now = format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR });
 
       let logo: string | null = null;
       try { logo = await getLogoBase64(); } catch {}
+
+      drawCoverPage({
+        doc, logo,
+        title: "Score de Confiabilidade",
+        subtitle: "Análise de estabilidade das tecnologias de rastreamento",
+        periodo: "Acumulado",
+        geradoEm: now,
+      });
 
       let y = drawHeader({
         doc, logo,
