@@ -6,7 +6,7 @@ import { useChamados } from "@/hooks/useChamados";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { format, parseISO, isAfter, isBefore } from "date-fns";
 import { toast } from "@/hooks/use-toast";
-import logoVX from "@/assets/logo-vx.png";
+
 
 export default function Relatorios() {
   const { chamados, loading } = useChamados();
