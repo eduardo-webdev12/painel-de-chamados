@@ -18,7 +18,7 @@ import {
 } from "recharts";
 import { motion } from "framer-motion";
 import { Progress } from "@/components/ui/progress";
-import { differenceInMinutes, parseISO, format, subDays, isAfter } from "date-fns";
+import { differenceInMinutes, parseISO, format, subDays, subWeeks, startOfWeek, endOfWeek, isAfter, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 function formatTempo(mins: number) {
