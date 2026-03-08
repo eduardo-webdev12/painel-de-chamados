@@ -17,6 +17,7 @@ import {
   Cell, PieChart, Pie, LineChart, Line, Legend,
 } from "recharts";
 import { motion } from "framer-motion";
+import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
 import { differenceInMinutes, parseISO, format, subDays, subWeeks, startOfWeek, endOfWeek, isAfter, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
