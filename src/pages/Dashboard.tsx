@@ -497,6 +497,7 @@ export default function Dashboard() {
         <KPICard title="Sem Cobertura" value={metrics.semCobertura} icon={ShieldOff} accent="text-status-nocoverage" delay={0.25} />
         <KPICard title="Recorrentes" value={metrics.recorrentes} icon={RotateCcw} accent="text-destructive" subtitle={`${metrics.taxaRecorrencia}% do total`} delay={0.3} />
         <KPICard title="MTTR" value={metrics.mttr} icon={Timer} accent="text-primary" subtitle="Tempo médio de resolução" delay={0.35} />
+        <KPICard title="MTBF" value={metrics.mtbfGlobal} icon={Shield} accent="text-primary" subtitle="Tempo médio entre falhas" delay={0.38} />
         <KPICard title="Taxa Resolução" value={`${metrics.taxaResolucao}%`} icon={Target} accent="text-status-resolved" delay={0.4} />
         <KPICard title="Resolução ≤24h" value={`${metrics.taxaMesmoDia}%`} icon={Zap} accent="text-primary" subtitle="Resolvidos no mesmo dia" delay={0.45} />
       </div>
