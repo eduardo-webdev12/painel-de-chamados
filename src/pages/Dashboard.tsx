@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
@@ -9,12 +9,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useChamados, ChamadoDB } from "@/hooks/useChamados";
 import { normalizarStatusChamado } from "@/lib/chamadoWorkflow";
+import { analisarPlacas, calcularMTBFGlobal, gerarAlertasTempo, RISCO_CONFIG, type NivelRisco } from "@/lib/nocAnalytics";
 import { motion } from "framer-motion";
 import {
   PlusCircle, AlertTriangle, Clock, CheckCircle2, Inbox, RotateCcw,
   TrendingUp, Percent, Truck, Cpu, User, CalendarDays, Timer,
   ShieldOff, Lock, Bell, Activity, BarChart3, Target, Zap,
-  TrendingDown, Award, Flame, Eye, Gauge
+  TrendingDown, Award, Flame, Eye, Gauge, Shield, Radio
 } from "lucide-react";
 import { format, isToday, isYesterday, subDays, parseISO, isAfter, differenceInMinutes, differenceInHours, getHours, startOfMonth, subMonths, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -242,6 +243,18 @@ export default function Dashboard() {
     const taxaResolucao = total > 0 ? ((resolvidos / total) * 100).toFixed(1) : "0";
     const taxaRecorrencia = total > 0 ? ((recorrentes / total) * 100).toFixed(1) : "0";
 
+    // MTBF global
+    const mtbfGlobal = calcularMTBFGlobal(filtrados);
+
+    // Predictive risk analysis
+    const placasAnalise = analisarPlacas(filtrados);
+    const placasCriticasPreditivo = placasAnalise.filter(p => p.nivel === "critico").length;
+    const placasAltoPreditivo = placasAnalise.filter(p => p.nivel === "alto").length;
+    const placasMedioPreditivo = placasAnalise.filter(p => p.nivel === "medio").length;
+
+    // Time-based alerts
+    const alertasTempo = gerarAlertasTempo(filtrados);
+
     // SLA per transportadora (avg resolve time)
     const slaTransp: Record<string, { total: number; count: number }> = {};
     comResolucao.forEach((c) => {
@@ -283,6 +296,12 @@ export default function Dashboard() {
       placaCount, transpCount, tecCount, opCount,
       placasCriticasCount: placasCriticasSet.size,
       placasCriticasList: Array.from(placasCriticasSet).slice(0, 5),
+      mtbfGlobal,
+      placasCriticasPreditivo,
+      placasAltoPreditivo,
+      placasMedioPreditivo,
+      alertasTempo,
+      placasAnalise,
     };
   }, [filtrados, chamados]);
 
@@ -478,9 +497,93 @@ export default function Dashboard() {
         <KPICard title="Sem Cobertura" value={metrics.semCobertura} icon={ShieldOff} accent="text-status-nocoverage" delay={0.25} />
         <KPICard title="Recorrentes" value={metrics.recorrentes} icon={RotateCcw} accent="text-destructive" subtitle={`${metrics.taxaRecorrencia}% do total`} delay={0.3} />
         <KPICard title="MTTR" value={metrics.mttr} icon={Timer} accent="text-primary" subtitle="Tempo médio de resolução" delay={0.35} />
+        <KPICard title="MTBF" value={metrics.mtbfGlobal} icon={Shield} accent="text-primary" subtitle="Tempo médio entre falhas" delay={0.38} />
         <KPICard title="Taxa Resolução" value={`${metrics.taxaResolucao}%`} icon={Target} accent="text-status-resolved" delay={0.4} />
         <KPICard title="Resolução ≤24h" value={`${metrics.taxaMesmoDia}%`} icon={Zap} accent="text-primary" subtitle="Resolvidos no mesmo dia" delay={0.45} />
       </div>
+
+      {/* ─── Criticality Panel ──────────────────────────── */}
+      {(metrics.placasCriticasPreditivo > 0 || metrics.placasAltoPreditivo > 0) && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <Radio className="h-4 w-4 text-destructive" />
+                Painel de Criticidade de Placas
+              </CardTitle>
+              <CardDescription className="text-xs">Classificação preditiva baseada em histórico, recorrência e tempo travada</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-4 mb-4">
+                {(["critico", "alto", "medio"] as const).map(nivel => {
+                  const count = nivel === "critico" ? metrics.placasCriticasPreditivo : nivel === "alto" ? metrics.placasAltoPreditivo : metrics.placasMedioPreditivo;
+                  const cfg = RISCO_CONFIG[nivel];
+                  return (
+                    <div key={nivel} className={`flex items-center gap-2 px-3 py-2 rounded-lg border ${cfg.bg}`}>
+                      <span>{cfg.icon}</span>
+                      <span className={`text-sm font-bold ${cfg.color}`}>{count}</span>
+                      <span className="text-xs text-muted-foreground">{cfg.label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              {metrics.placasAnalise.filter((p: any) => p.nivel === "critico" || p.nivel === "alto").slice(0, 5).map((p: any) => {
+                const cfg = RISCO_CONFIG[p.nivel as NivelRisco];
+                return (
+                  <div key={p.placa} className={`flex items-center justify-between py-2 px-3 rounded-md mb-1 border ${cfg.bg}`}>
+                    <div className="flex items-center gap-3">
+                      <span>{cfg.icon}</span>
+                      <span className="font-mono font-bold text-sm">{p.placa}</span>
+                      <span className="text-xs text-muted-foreground">{p.tecnologias.join(", ")}</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-xs">
+                      <span>{p.totalOcorrencias} ocs</span>
+                      {p.recorrencias > 0 && <span className="text-orange-500">{p.recorrencias}x recorr.</span>}
+                      {p.tempoTravadaAtual > 0 && <span className="text-destructive font-medium">⏱ {p.tempoTravadaAtual < 60 ? `${p.tempoTravadaAtual}min` : `${(p.tempoTravadaAtual / 60).toFixed(1)}h`}</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
+
+      {/* ─── Time Alerts ────────────────────────────────── */}
+      {metrics.alertasTempo.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+          <Card className="border-destructive/20">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-destructive" />
+                Alertas de Tempo — Placas Travadas
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-1">
+              {metrics.alertasTempo.slice(0, 8).map((a: any) => (
+                <div
+                  key={a.chamadoId}
+                  className={`flex items-center justify-between py-2 px-3 rounded-md cursor-pointer hover:bg-muted/50 ${
+                    a.level === "critico" ? "bg-destructive/5 border border-destructive/20" :
+                    a.level === "vermelho" ? "bg-orange-500/5 border border-orange-400/20" :
+                    "bg-yellow-500/5 border border-yellow-400/20"
+                  }`}
+                  onClick={() => navigate(`/chamados/${a.chamadoId}`)}
+                >
+                  <div className="flex items-center gap-3">
+                    <span>{a.level === "critico" ? "🔴" : a.level === "vermelho" ? "🟠" : "🟡"}</span>
+                    <span className="font-mono font-bold text-sm">{a.placa}</span>
+                    <span className="text-xs text-muted-foreground">{a.tecnologia} • {a.transportadora}</span>
+                  </div>
+                  <span className={`text-sm font-bold ${a.level === "critico" ? "text-destructive" : a.level === "vermelho" ? "text-orange-500" : "text-yellow-600"}`}>
+                    {a.minutosTravada < 60 ? `${a.minutosTravada} min` : `${(a.minutosTravada / 60).toFixed(1)} h`}
+                  </span>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </motion.div>
+      )}
 
       {viewMode === "executivo" ? (
         <>
