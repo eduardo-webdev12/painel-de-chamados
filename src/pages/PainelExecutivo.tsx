@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useChamados } from "@/hooks/useChamados";
 import {
   calcularScoreConfiabilidade, calcularMTBFGlobal, rankingTecnologias,
@@ -52,39 +53,43 @@ const KpiCard = ({ icon: Icon, label, value, sub, className = "" }: {
 export default function PainelExecutivo() {
   const { chamados, loading } = useChamados();
 
+  const [periodo, setPeriodo] = useState<7 | 30 | 90 | null>(30);
+
+  const filtered = useMemo(() => {
+    if (!periodo) return chamados;
+    const corte = subDays(new Date(), periodo);
+    return chamados.filter(c => isAfter(parseISO(c.data_abertura), corte));
+  }, [chamados, periodo]);
+
   const kpis = useMemo(() => {
     const hoje = new Date();
     const seteDias = subDays(hoje, 7);
-    const total = chamados.length;
-    const abertos = chamados.filter(c => {
+    const total = filtered.length;
+    const abertos = filtered.filter(c => {
       const s = normalizarStatusChamado(c.status);
       return s === "Aberto" || s === "Em Tratativa";
     });
-    const resolvidosTotal = chamados.filter(c => normalizarStatusChamado(c.status) === "Resolvido");
+    const resolvidosTotal = filtered.filter(c => normalizarStatusChamado(c.status) === "Resolvido");
     const resolvidosSemana = resolvidosTotal.filter(c => c.data_resolucao && isAfter(parseISO(c.data_resolucao), seteDias));
 
-    // MTTR global
-    const comTempo = chamados.filter(c => c.data_resolucao && c.hora_travou);
+    const comTempo = filtered.filter(c => c.data_resolucao && c.hora_travou);
     const tempos = comTempo.map(c => Math.max(0, differenceInMinutes(parseISO(c.data_resolucao!), parseISO(c.hora_travou!))));
     const mttr = tempos.length > 0 ? tempos.reduce((a, b) => a + b, 0) / tempos.length : 0;
 
-    // Taxa resolução
     const taxaResolucao = total > 0 ? (resolvidosTotal.length / total) * 100 : 0;
 
-    // Recorrências
-    const totalRecorrencias = chamados.reduce((s, c) => s + c.contagem_recorrencia, 0);
-    const taxaRecorrencia = total > 0 ? (chamados.filter(c => c.recorrente).length / total) * 100 : 0;
+    const totalRecorrencias = filtered.reduce((s, c) => s + c.contagem_recorrencia, 0);
+    const taxaRecorrencia = total > 0 ? (filtered.filter(c => c.recorrente).length / total) * 100 : 0;
 
-    // Placas únicas
-    const placasUnicas = new Set(chamados.map(c => c.placa.trim().toUpperCase())).size;
+    const placasUnicas = new Set(filtered.map(c => c.placa.trim().toUpperCase())).size;
 
     return { total, abertos: abertos.length, resolvidosSemana: resolvidosSemana.length, mttr, taxaResolucao, totalRecorrencias, taxaRecorrencia, placasUnicas };
-  }, [chamados]);
+  }, [filtered]);
 
-  const techScores = useMemo(() => calcularScoreConfiabilidade(chamados), [chamados]);
-  const mtbfGlobal = useMemo(() => calcularMTBFGlobal(chamados), [chamados]);
-  const alertas = useMemo(() => gerarAlertasTempo(chamados), [chamados]);
-  const placasRisco = useMemo(() => analisarPlacas(chamados).filter(p => p.nivel === "critico" || p.nivel === "alto"), [chamados]);
+  const techScores = useMemo(() => calcularScoreConfiabilidade(filtered), [filtered]);
+  const mtbfGlobal = useMemo(() => calcularMTBFGlobal(filtered), [filtered]);
+  const alertas = useMemo(() => gerarAlertasTempo(filtered), [filtered]);
+  const placasRisco = useMemo(() => analisarPlacas(filtered).filter(p => p.nivel === "critico" || p.nivel === "alto"), [filtered]);
 
   const avgScore = techScores.length > 0 ? Math.round(techScores.reduce((s, t) => s + t.score, 0) / techScores.length) : 0;
 
@@ -98,7 +103,7 @@ export default function PainelExecutivo() {
   // Chart data: status distribution
   const statusDist = useMemo(() => {
     const map: Record<string, number> = {};
-    chamados.forEach(c => {
+    filtered.forEach(c => {
       const s = normalizarStatusChamado(c.status);
       map[s] = (map[s] || 0) + 1;
     });
@@ -110,31 +115,41 @@ export default function PainelExecutivo() {
     return Object.entries(map).map(([name, value]) => ({
       name, value, fill: colors[name] || "hsl(217, 91%, 60%)",
     }));
-  }, [chamados]);
+  }, [filtered]);
 
-  // Chart: top 5 transportadoras by failures
   const topTransp = useMemo(() => {
     const map = new Map<string, number>();
-    chamados.forEach(c => map.set(c.transportadora, (map.get(c.transportadora) || 0) + 1));
+    filtered.forEach(c => map.set(c.transportadora, (map.get(c.transportadora) || 0) + 1));
     return Array.from(map.entries())
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([name, falhas]) => ({ name: name.length > 16 ? name.slice(0, 14) + "…" : name, falhas }));
-  }, [chamados]);
+  }, [filtered]);
 
   if (loading) return <div className="flex items-center justify-center py-20"><p className="text-muted-foreground">Carregando...</p></div>;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <BarChart3 className="h-6 w-6 text-primary" />
-          Painel Executivo
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Visão consolidada da operação — {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
-        </p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <BarChart3 className="h-6 w-6 text-primary" />
+            Painel Executivo
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Visão consolidada da operação — {format(new Date(), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          </p>
+        </div>
+        <div className="flex gap-1.5">
+          {([7, 30, 90] as const).map(d => (
+            <Button key={d} size="sm" variant={periodo === d ? "default" : "outline"} onClick={() => setPeriodo(d)}>
+              {d}d
+            </Button>
+          ))}
+          <Button size="sm" variant={periodo === null ? "default" : "outline"} onClick={() => setPeriodo(null)}>
+            Tudo
+          </Button>
+        </div>
       </div>
 
       {/* KPI Row 1 */}
