@@ -61,16 +61,101 @@ export default function Confiabilidade() {
     ? Math.round(techScores.reduce((s, t) => s + t.score, 0) / techScores.length)
     : 0;
 
+  const exportPDF = useCallback(async () => {
+    try {
+      const { default: jsPDF } = await import("jspdf");
+      const { default: autoTable } = await import("jspdf-autotable");
+      const { getLogoBase64 } = await import("@/lib/logo-base64");
+
+      const doc = new jsPDF({ orientation: "landscape" });
+      const now = format(new Date(), "dd/MM/yyyy HH:mm", { locale: ptBR });
+
+      // Logo + header
+      try {
+        const logo = await getLogoBase64();
+        doc.addImage(logo, "PNG", 14, 8, 22, 22);
+      } catch {}
+      doc.setFontSize(16);
+      doc.text("Relatório de Confiabilidade — Tecnologias", 42, 18);
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text(`SAC VX INTEGRAÇÕES  •  Gerado em ${now}  •  Score Médio: ${avgScore} pts`, 42, 25);
+      doc.setTextColor(0);
+
+      // Table
+      autoTable(doc, {
+        startY: 35,
+        head: [["#", "Tecnologia", "Score", "Status", "Placas", "Falhas", "MTTR", "Recorrência %", "MTBF"]],
+        body: techScores.map((d, i) => [
+          i + 1,
+          d.nome,
+          d.score,
+          SCORE_CONFIG[d.classificacao].label,
+          d.totalPlacas,
+          d.totalFalhas,
+          formatTempo(d.tempoMedioResolucao),
+          `${(d.taxaRecorrencia * 100).toFixed(1)}%`,
+          d.mtbf !== null ? formatTempo(d.mtbf) : "—",
+        ]),
+        styles: { fontSize: 9, cellPadding: 3 },
+        headStyles: { fillColor: [30, 64, 175], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [245, 247, 250] },
+      });
+
+      doc.save(`confiabilidade-tecnologias-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+      toast.success("PDF exportado com sucesso");
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao gerar PDF");
+    }
+  }, [techScores, avgScore]);
+
+  const exportExcel = useCallback(async () => {
+    try {
+      const XLSX = await import("xlsx");
+      const rows = techScores.map((d, i) => ({
+        "#": i + 1,
+        Tecnologia: d.nome,
+        Score: d.score,
+        Status: SCORE_CONFIG[d.classificacao].label,
+        Placas: d.totalPlacas,
+        Falhas: d.totalFalhas,
+        "MTTR": formatTempo(d.tempoMedioResolucao),
+        "Recorrência %": `${(d.taxaRecorrencia * 100).toFixed(1)}%`,
+        "MTBF": d.mtbf !== null ? formatTempo(d.mtbf) : "—",
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      ws["!cols"] = [{ wch: 4 }, { wch: 18 }, { wch: 7 }, { wch: 12 }, { wch: 8 }, { wch: 8 }, { wch: 12 }, { wch: 14 }, { wch: 12 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Confiabilidade");
+      XLSX.writeFile(wb, `confiabilidade-tecnologias-${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+      toast.success("Excel exportado com sucesso");
+    } catch (e) {
+      console.error(e);
+      toast.error("Erro ao gerar Excel");
+    }
+  }, [techScores]);
+
   if (loading) return <div className="flex items-center justify-center py-20"><p className="text-muted-foreground">Carregando...</p></div>;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Shield className="h-6 w-6 text-primary" />
-          Score de Confiabilidade
-        </h1>
-        <p className="text-sm text-muted-foreground">Índice analítico de estabilidade das tecnologias de rastreamento</p>
+      <div className="flex items-start justify-between flex-wrap gap-3">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
+            <Shield className="h-6 w-6 text-primary" />
+            Score de Confiabilidade
+          </h1>
+          <p className="text-sm text-muted-foreground">Índice analítico de estabilidade das tecnologias de rastreamento</p>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={exportPDF} className="gap-1.5">
+            <FileText className="h-4 w-4" /> PDF
+          </Button>
+          <Button variant="outline" size="sm" onClick={exportExcel} className="gap-1.5">
+            <FileSpreadsheet className="h-4 w-4" /> Excel
+          </Button>
+        </div>
       </div>
 
       {/* Alert banner */}
