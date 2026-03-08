@@ -248,9 +248,9 @@ export default function Dashboard() {
 
     // Predictive risk analysis
     const placasAnalise = analisarPlacas(filtrados);
-    const placasCriticas = placasAnalise.filter(p => p.nivel === "critico").length;
-    const placasAlto = placasAnalise.filter(p => p.nivel === "alto").length;
-    const placasMedio = placasAnalise.filter(p => p.nivel === "medio").length;
+    const placasCriticasPreditivo = placasAnalise.filter(p => p.nivel === "critico").length;
+    const placasAltoPreditivo = placasAnalise.filter(p => p.nivel === "alto").length;
+    const placasMedioPreditivo = placasAnalise.filter(p => p.nivel === "medio").length;
 
     // Time-based alerts
     const alertasTempo = gerarAlertasTempo(filtrados);
