@@ -10,7 +10,7 @@ import {
 import { normalizarStatusChamado } from "@/lib/chamadoWorkflow";
 import {
   Shield, Activity, Clock, Timer, RotateCcw, AlertTriangle, TrendingUp,
-  CheckCircle2, Cpu, Car, Truck, Zap, Award, BarChart3,
+  CheckCircle2, Cpu, Car, Truck, Zap, Award, BarChart3, FileText,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
