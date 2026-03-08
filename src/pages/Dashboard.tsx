@@ -296,6 +296,12 @@ export default function Dashboard() {
       placaCount, transpCount, tecCount, opCount,
       placasCriticasCount: placasCriticasSet.size,
       placasCriticasList: Array.from(placasCriticasSet).slice(0, 5),
+      mtbfGlobal,
+      placasCriticasPreditivo,
+      placasAltoPreditivo,
+      placasMedioPreditivo,
+      alertasTempo,
+      placasAnalise,
     };
   }, [filtrados, chamados]);
 
