@@ -19,6 +19,7 @@ const operacionalItems = [
   { title: "Histórico Placas", url: "/historico-placas", icon: Car },
   { title: "Transportadoras", url: "/transportadoras", icon: Truck },
   { title: "Tecnologias", url: "/tecnologias", icon: Cpu },
+  { title: "Confiabilidade", url: "/confiabilidade", icon: Shield },
 ];
 
 const sistemaItems = [

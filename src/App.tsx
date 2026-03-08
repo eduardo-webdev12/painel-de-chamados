@@ -50,6 +50,7 @@ function ProtectedRoutes() {
         <Route path="/historico-placas" element={<HistoricoPlacas />} />
         <Route path="/transportadoras" element={<Transportadoras />} />
         <Route path="/tecnologias" element={<Tecnologias />} />
+        <Route path="/confiabilidade" element={<Confiabilidade />} />
         <Route path="/monitoramento" element={<Monitoramento />} />
         <Route path="/gestao-usuarios" element={<GestaoUsuarios />} />
         <Route path="*" element={<NotFound />} />
