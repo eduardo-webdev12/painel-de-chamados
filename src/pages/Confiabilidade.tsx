@@ -282,25 +282,62 @@ export default function Confiabilidade() {
             <CardTitle className="text-sm font-semibold flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Evolução Mensal do Score</CardTitle>
             <CardDescription className="text-xs">Tendência de confiabilidade por tecnologia nos últimos 6 meses</CardDescription>
           </CardHeader>
-          <CardContent className="h-[340px]">
+          <CardContent className="h-[380px] pt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={evolucao} margin={{ left: 0, right: 20, top: 5, bottom: 5 }}>
+              <LineChart data={evolucao} margin={{ left: 10, right: 30, top: 10, bottom: 20 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="mes" fontSize={10} tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis domain={[0, 100]} fontSize={10} tick={{ fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} formatter={(v: number) => [`${v} pts`]} />
-                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <XAxis
+                  dataKey="mes"
+                  fontSize={11}
+                  tick={{ fill: "hsl(var(--muted-foreground))" }}
+                  tickMargin={8}
+                  axisLine={{ stroke: "hsl(var(--border))" }}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  fontSize={11}
+                  tick={{ fill: "hsl(var(--muted-foreground))" }}
+                  tickMargin={6}
+                  axisLine={{ stroke: "hsl(var(--border))" }}
+                  label={{ value: "Score", angle: -90, position: "insideLeft", style: { fill: "hsl(var(--muted-foreground))", fontSize: 10 } }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "hsl(var(--card))",
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: 8,
+                    padding: "8px 12px",
+                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+                  }}
+                  formatter={(v: number) => [`${v} pts`, undefined]}
+                  labelStyle={{ fontWeight: 600, marginBottom: 4 }}
+                />
+                <Legend
+                  wrapperStyle={{ fontSize: 11, paddingTop: 12 }}
+                  iconType="circle"
+                  iconSize={8}
+                />
                 {techNames.map((name, i) => {
-                  const colors = ["hsl(142,71%,45%)", "hsl(217,91%,60%)", "hsl(25,95%,53%)", "hsl(0,84%,60%)", "hsl(262,83%,58%)", "hsl(180,70%,45%)", "hsl(45,93%,47%)"];
+                  const colors = [
+                    "hsl(142, 71%, 45%)",
+                    "hsl(217, 91%, 60%)",
+                    "hsl(25, 95%, 53%)",
+                    "hsl(0, 84%, 60%)",
+                    "hsl(262, 83%, 58%)",
+                    "hsl(180, 70%, 45%)",
+                    "hsl(45, 93%, 47%)",
+                    "hsl(330, 80%, 55%)",
+                    "hsl(195, 85%, 50%)",
+                  ];
                   return (
                     <Line
                       key={name}
                       type="monotone"
                       dataKey={name}
                       stroke={colors[i % colors.length]}
-                      strokeWidth={2}
-                      dot={{ r: 3 }}
-                      activeDot={{ r: 5 }}
+                      strokeWidth={2.5}
+                      dot={{ r: 4, strokeWidth: 2, fill: "hsl(var(--card))" }}
+                      activeDot={{ r: 6, strokeWidth: 2 }}
                     />
                   );
                 })}
