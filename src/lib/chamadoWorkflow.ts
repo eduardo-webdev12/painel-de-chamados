@@ -84,7 +84,7 @@ export function montarPayloadRecorrencia(dataHoraRecorrencia: string, contagemAt
   return {
     ok: true as const,
     updates: {
-      status: "Aberto",
+      status: "Em Tratativa",
       data_resolucao: null,
       recorrente: true,
       contagem_recorrencia: contagem,

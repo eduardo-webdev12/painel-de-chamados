@@ -17,8 +17,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { toast } from "@/hooks/use-toast";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { ArrowLeft, RotateCcw, History, Trash2, Upload, Link as LinkIcon, MessageCircle, ExternalLink } from "lucide-react";
-import { gerarMensagemWhatsApp, abrirWhatsApp, validarPreEnvioWhatsApp } from "@/lib/whatsapp";
+import { ArrowLeft, RotateCcw, History, Trash2, Upload, Link as LinkIcon, MessageCircle, ExternalLink, Truck, Cpu, Copy, CheckCheck } from "lucide-react";
+import { gerarMensagemTecnologia, gerarMensagemTransportadora, abrirWhatsApp, validarPreEnvioWhatsApp, copiarImagemParaClipboard } from "@/lib/whatsapp";
 import { montarPayloadEncerramento, montarPayloadRecorrencia, normalizarStatusChamado, type EncerrarOpcao } from "@/lib/chamadoWorkflow";
 import type { ChamadoDB } from "@/hooks/useChamados";
 
@@ -47,9 +47,12 @@ export default function DetalhesChamado() {
   const [deleting, setDeleting] = useState(false);
   const [historico, setHistorico] = useState<HistoricoItem[]>([]);
   const [uploading, setUploading] = useState(false);
-  const [whatsappNumero, setWhatsappNumero] = useState("");
+  const [whatsappNumeroTec, setWhatsappNumeroTec] = useState("");
+  const [whatsappNumeroTransp, setWhatsappNumeroTransp] = useState("");
   const [recorrenciaDialogOpen, setRecorrenciaDialogOpen] = useState(false);
   const [recorrenciaDataHora, setRecorrenciaDataHora] = useState(() => format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [copiandoImagem, setCopiandoImagem] = useState(false);
+  const [imagemCopiada, setImagemCopiada] = useState(false);
 
   const isAdmin = profile?.role === "admin";
 
@@ -66,10 +69,14 @@ export default function DetalhesChamado() {
         setObservacaoTecnica((c as any).observacao_tecnica || "");
         setLinkAcompanhamento((c as any).link_acompanhamento || "");
         setStatus(normalizarStatusChamado(c.status));
-        // Fetch WhatsApp number for this technology
+        // Fetch WhatsApp numbers
         if (c.tecnologia) {
           supabase.from("tecnologia_contatos").select("whatsapp_numero").eq("tecnologia", c.tecnologia).maybeSingle()
-            .then(({ data }) => { if (data) setWhatsappNumero(data.whatsapp_numero); });
+            .then(({ data }) => { if (data) setWhatsappNumeroTec(data.whatsapp_numero); });
+        }
+        if (c.transportadora) {
+          supabase.from("transportadora_contatos" as any).select("whatsapp_numero").eq("transportadora", c.transportadora).maybeSingle()
+            .then(({ data }: any) => { if (data) setWhatsappNumeroTransp(data.whatsapp_numero); });
         }
       }
       setHistorico((histRes.data as HistoricoItem[]) || []);
@@ -124,46 +131,110 @@ export default function DetalhesChamado() {
     }
   };
 
-  const handleEnviarWhatsApp = () => {
-    if (!chamado) return;
-    const fotoAnexo = (chamado as any).anexo_foto_url as string | null;
-
-    // Pre-send validation
-    const erros = validarPreEnvioWhatsApp({ whatsappNumero, placa: chamado.placa, fotoUrl: fotoAnexo });
-    if (erros.length > 0) {
-      toast({
-        title: "Verificação pré-envio",
-        description: erros.join(" "),
-        variant: "destructive",
-      });
-      // Allow send without photo but warn
-      if (erros.some(e => e.includes("Número"))) return;
+  const handleCopiarImagem = async () => {
+    const fotoUrl = (chamado as any)?.anexo_foto_url as string | null;
+    if (!fotoUrl) {
+      toast({ title: "Nenhuma foto anexada", description: "Anexe uma foto antes de copiar.", variant: "destructive" });
+      return;
     }
-
+    setCopiandoImagem(true);
     try {
-      let msg = gerarMensagemWhatsApp(chamado.placa, "", profile?.nome, chamado.tecnologia);
-      if (fotoAnexo) {
-        msg += `\n\n📎 Print da ocorrência:\n${fotoAnexo}`;
-      }
-      abrirWhatsApp(whatsappNumero, msg);
-      addHistorico("Mensagem WhatsApp enviada", `Tecnologia: ${chamado.tecnologia}${fotoAnexo ? " • Com print anexado" : " • Sem print"}`);
-      toast({ title: "WhatsApp aberto", description: "Mensagem padronizada e link do print enviados." });
+      await copiarImagemParaClipboard(fotoUrl);
+      setImagemCopiada(true);
+      toast({ title: "Imagem copiada!", description: "Cole no WhatsApp com CTRL+V." });
+      setTimeout(() => setImagemCopiada(false), 3000);
     } catch (err: any) {
-      toast({ title: "Erro ao abrir WhatsApp", description: err?.message || "Verifique número e dados do chamado.", variant: "destructive" });
+      toast({ title: "Erro ao copiar imagem", description: err?.message || "Tente manualmente.", variant: "destructive" });
+    } finally {
+      setCopiandoImagem(false);
     }
   };
 
-  const handleSalvarNumeroWhatsApp = async () => {
-    if (!chamado || !whatsappNumero.trim()) return;
+  const handleEnviarWhatsAppTecnologia = async () => {
+    if (!chamado) return;
+    const fotoUrl = (chamado as any).anexo_foto_url as string | null;
+    
+    if (!whatsappNumeroTec?.trim()) {
+      toast({ title: "Número não cadastrado", description: "Configure o número WhatsApp da tecnologia.", variant: "destructive" });
+      return;
+    }
+
+    // Step 1: Copy image to clipboard
+    if (fotoUrl) {
+      try {
+        await copiarImagemParaClipboard(fotoUrl);
+        toast({ title: "📋 Imagem copiada!", description: "Cole (CTRL+V) no WhatsApp após enviar a mensagem." });
+      } catch {
+        toast({ title: "Aviso", description: "Não foi possível copiar a imagem. Envie manualmente.", variant: "destructive" });
+      }
+    }
+
+    // Step 2: Open WhatsApp with message
+    try {
+      const msg = gerarMensagemTecnologia(chamado.placa);
+      abrirWhatsApp(whatsappNumeroTec, msg);
+      await addHistorico("Mensagem WhatsApp enviada para Tecnologia", `Tecnologia: ${chamado.tecnologia} • ${format(new Date(), "HH:mm")}${fotoUrl ? " • Com print copiado" : " • Sem print"}`);
+      toast({ title: "WhatsApp Tecnologia aberto", description: "Mensagem padronizada enviada. Cole a imagem (CTRL+V)." });
+    } catch (err: any) {
+      toast({ title: "Erro ao abrir WhatsApp", description: err?.message, variant: "destructive" });
+    }
+  };
+
+  const handleEnviarWhatsAppTransportadora = async () => {
+    if (!chamado) return;
+    const fotoUrl = (chamado as any).anexo_foto_url as string | null;
+    
+    if (!whatsappNumeroTransp?.trim()) {
+      toast({ title: "Número não cadastrado", description: "Configure o número WhatsApp da transportadora.", variant: "destructive" });
+      return;
+    }
+
+    // Step 1: Copy image to clipboard
+    if (fotoUrl) {
+      try {
+        await copiarImagemParaClipboard(fotoUrl);
+        toast({ title: "📋 Imagem copiada!", description: "Cole (CTRL+V) no WhatsApp após enviar a mensagem." });
+      } catch {
+        toast({ title: "Aviso", description: "Não foi possível copiar a imagem. Envie manualmente.", variant: "destructive" });
+      }
+    }
+
+    // Step 2: Open WhatsApp with message
+    try {
+      const msg = gerarMensagemTransportadora(chamado.placa);
+      abrirWhatsApp(whatsappNumeroTransp, msg);
+      await addHistorico("Mensagem WhatsApp enviada para Transportadora", `Transportadora: ${chamado.transportadora} • ${format(new Date(), "HH:mm")}${fotoUrl ? " • Com print copiado" : " • Sem print"}`);
+      toast({ title: "WhatsApp Transportadora aberto", description: "Mensagem padronizada enviada. Cole a imagem (CTRL+V)." });
+    } catch (err: any) {
+      toast({ title: "Erro ao abrir WhatsApp", description: err?.message, variant: "destructive" });
+    }
+  };
+
+  const handleSalvarNumeroTec = async () => {
+    if (!chamado || !whatsappNumeroTec.trim()) return;
     try {
       const { error } = await supabase.from("tecnologia_contatos").upsert(
-        { tecnologia: chamado.tecnologia, whatsapp_numero: whatsappNumero.trim() } as any,
+        { tecnologia: chamado.tecnologia, whatsapp_numero: whatsappNumeroTec.trim() } as any,
         { onConflict: "tecnologia" }
       );
       if (error) throw error;
-      toast({ title: "Número salvo com sucesso" });
+      toast({ title: "Número da tecnologia salvo" });
     } catch (err: any) {
-      toast({ title: "Erro ao salvar número", description: err?.message, variant: "destructive" });
+      toast({ title: "Erro ao salvar", description: err?.message, variant: "destructive" });
+    }
+  };
+
+  const handleSalvarNumeroTransp = async () => {
+    if (!chamado || !whatsappNumeroTransp.trim()) return;
+    try {
+      const { error } = await supabase.from("transportadora_contatos" as any).upsert(
+        { transportadora: chamado.transportadora, whatsapp_numero: whatsappNumeroTransp.trim() } as any,
+        { onConflict: "transportadora" }
+      );
+      if (error) throw error;
+      toast({ title: "Número da transportadora salvo" });
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar", description: err?.message, variant: "destructive" });
     }
   };
 
@@ -283,11 +354,11 @@ export default function DetalhesChamado() {
       }
       await addHistorico(payload.historicoAcao, payload.historicoDetalhes);
       setChamado({ ...chamado, ...(payload.updates as any) } as ChamadoDB);
-      setStatus("Aberto");
+      setStatus("Em Tratativa");
       setRecorrenciaDialogOpen(false);
       toast({
         title: "Recorrência registrada",
-        description: `Placa voltou a travar em ${format(new Date(recorrenciaDataHora), "dd/MM/yyyy HH:mm")}.`,
+        description: `Placa voltou a travar em ${format(new Date(recorrenciaDataHora), "dd/MM/yyyy HH:mm")}. Status: Em Tratativa.`,
       });
     } finally {
       setSaving(false);
@@ -351,11 +422,6 @@ export default function DetalhesChamado() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {/* WhatsApp Button */}
-          <Button variant="outline" size="sm" onClick={handleEnviarWhatsApp} className="text-green-600 border-green-300 hover:bg-green-50">
-            <MessageCircle className="mr-2 h-4 w-4" />
-            WhatsApp
-          </Button>
           {isAdmin && (
             <AlertDialog>
               <AlertDialogTrigger asChild>
@@ -405,15 +471,20 @@ export default function DetalhesChamado() {
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><Upload className="h-5 w-5" /> Anexos</CardTitle></CardHeader>
         <CardContent className="space-y-4">
-          {/* Photo */}
           <div className="space-y-2">
             <Label>Print da placa travada</Label>
             {fotoUrl ? (
               <div className="space-y-2">
                 <img src={fotoUrl} alt="Print da placa" className="max-h-48 rounded-md border object-contain" />
-                <a href={fotoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
-                  <ExternalLink className="h-3 w-3" /> Abrir em nova aba
-                </a>
+                <div className="flex items-center gap-2">
+                  <a href={fotoUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline flex items-center gap-1">
+                    <ExternalLink className="h-3 w-3" /> Abrir em nova aba
+                  </a>
+                  <Button variant="outline" size="sm" onClick={handleCopiarImagem} disabled={copiandoImagem} className="text-xs h-7">
+                    {imagemCopiada ? <CheckCheck className="mr-1 h-3 w-3 text-green-600" /> : <Copy className="mr-1 h-3 w-3" />}
+                    {imagemCopiada ? "Copiada!" : copiandoImagem ? "Copiando..." : "Copiar imagem"}
+                  </Button>
+                </div>
               </div>
             ) : (
               <p className="text-xs text-muted-foreground">Nenhuma foto anexada.</p>
@@ -426,7 +497,6 @@ export default function DetalhesChamado() {
             )}
           </div>
 
-          {/* Link */}
           <div className="space-y-2">
             <Label className="flex items-center gap-1"><LinkIcon className="h-4 w-4" /> Link de acompanhamento</Label>
             <Input
@@ -442,7 +512,6 @@ export default function DetalhesChamado() {
             )}
           </div>
 
-          {/* Technical note */}
           <div className="space-y-2">
             <Label>Observação técnica adicional</Label>
             <Textarea
@@ -456,26 +525,61 @@ export default function DetalhesChamado() {
         </CardContent>
       </Card>
 
-      {/* WhatsApp Config */}
+      {/* WhatsApp — Tecnologia */}
       <Card>
-        <CardHeader><CardTitle className="flex items-center gap-2"><MessageCircle className="h-5 w-5 text-green-600" /> WhatsApp da Tecnologia</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Cpu className="h-5 w-5 text-green-600" />
+            WhatsApp — Tecnologia ({chamado.tecnologia})
+          </CardTitle>
+        </CardHeader>
         <CardContent className="space-y-3">
-          <div className="space-y-2">
-            <Label>Número WhatsApp ({chamado.tecnologia})</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="5511999999999"
-                value={whatsappNumero}
-                onChange={(e) => setWhatsappNumero(e.target.value)}
-              />
-              <Button variant="outline" size="sm" onClick={handleSalvarNumeroWhatsApp}>Salvar</Button>
-            </div>
-            <p className="text-xs text-muted-foreground">Formato: código do país + DDD + número (ex: 5511999999999)</p>
+          <div className="flex gap-2">
+            <Input
+              placeholder="5511999999999"
+              value={whatsappNumeroTec}
+              onChange={(e) => setWhatsappNumeroTec(e.target.value)}
+            />
+            <Button variant="outline" size="sm" onClick={handleSalvarNumeroTec}>Salvar</Button>
           </div>
-          <Button onClick={handleEnviarWhatsApp} className="bg-green-600 hover:bg-green-700 text-white w-full">
+          <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground border">
+            <p className="font-medium text-foreground mb-1">Prévia da mensagem:</p>
+            <p className="whitespace-pre-wrap">{gerarMensagemTecnologia(chamado.placa)}</p>
+          </div>
+          <Button onClick={handleEnviarWhatsAppTecnologia} className="bg-green-600 hover:bg-green-700 text-white w-full">
             <MessageCircle className="mr-2 h-4 w-4" />
-            Enviar para Tecnologia via WhatsApp
+            Enviar para Tecnologia
           </Button>
+          <p className="text-xs text-muted-foreground">A imagem será copiada automaticamente. Cole (CTRL+V) no WhatsApp.</p>
+        </CardContent>
+      </Card>
+
+      {/* WhatsApp — Transportadora */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Truck className="h-5 w-5 text-blue-600" />
+            WhatsApp — Transportadora ({chamado.transportadora})
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="5511999999999"
+              value={whatsappNumeroTransp}
+              onChange={(e) => setWhatsappNumeroTransp(e.target.value)}
+            />
+            <Button variant="outline" size="sm" onClick={handleSalvarNumeroTransp}>Salvar</Button>
+          </div>
+          <div className="rounded-md bg-muted/50 p-3 text-xs text-muted-foreground border">
+            <p className="font-medium text-foreground mb-1">Prévia da mensagem:</p>
+            <p className="whitespace-pre-wrap">{gerarMensagemTransportadora(chamado.placa)}</p>
+          </div>
+          <Button onClick={handleEnviarWhatsAppTransportadora} className="bg-blue-600 hover:bg-blue-700 text-white w-full">
+            <MessageCircle className="mr-2 h-4 w-4" />
+            Enviar para Transportadora
+          </Button>
+          <p className="text-xs text-muted-foreground">A imagem será copiada automaticamente. Cole (CTRL+V) no WhatsApp.</p>
         </CardContent>
       </Card>
 
@@ -563,7 +667,7 @@ export default function DetalhesChamado() {
                   <AlertDialogHeader>
                     <AlertDialogTitle>Registrar recorrência da placa</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Informe a data e hora reais em que a placa voltou a travar para manter KPIs e histórico corretos.
+                      Informe a data e hora reais em que a placa voltou a travar. O chamado voltará ao status <strong>Em Tratativa</strong>.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <div className="space-y-2">

@@ -125,6 +125,7 @@ export default function NovoChamado() {
       observacao: form.observacao,
       hora_travou: horaTravou,
       tempo_travada: tempoTravada,
+      status: "Em Tratativa",
       recorrente: form.recorrente,
       contagem_recorrencia: form.recorrente ? 1 : 0,
       criado_por: user?.id || null,
@@ -145,7 +146,7 @@ export default function NovoChamado() {
       await supabase.from("chamado_historico").insert({
         chamado_id: inserted.id,
         acao: "Chamado criado",
-        detalhes: `Placa: ${form.placa.toUpperCase()} — ${form.transportadora}`,
+        detalhes: `Placa: ${form.placa.toUpperCase()} — ${form.transportadora} • Status: Em Tratativa`,
         usuario_nome: profile?.nome || null,
         usuario_email: profile?.email || null,
         usuario_cargo: profile?.cargo || null,
@@ -154,7 +155,7 @@ export default function NovoChamado() {
     }
 
     setLoading(false);
-    toast({ title: "Chamado criado", description: `Chamado para placa ${form.placa.toUpperCase()} registrado.` });
+    toast({ title: "Chamado criado", description: `Chamado para placa ${form.placa.toUpperCase()} registrado com status Em Tratativa.` });
     navigate("/chamados");
   };
 
@@ -169,7 +170,7 @@ export default function NovoChamado() {
         <CardHeader>
           <CardTitle>Dados do Chamado</CardTitle>
           <CardDescription>
-            Data/hora: {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} · Status: Aberto
+            Data/hora: {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} · Status: Em Tratativa
           </CardDescription>
         </CardHeader>
         <CardContent>

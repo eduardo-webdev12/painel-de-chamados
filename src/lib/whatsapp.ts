@@ -11,25 +11,30 @@ const whatsappMessageSchema = z
   .min(10, "Mensagem vazia")
   .max(2500, "Mensagem muito longa para WhatsApp.");
 
-const saudacaoPorHorario = (agora = new Date()) => {
-  const hora = agora.getHours();
-  if (hora >= 5 && hora < 12) return "Bom dia";
-  if (hora >= 12 && hora < 18) return "Boa tarde";
-  return "Boa noite";
-};
+/**
+ * Mensagem padrão para TECNOLOGIA.
+ * Texto fixo conforme padrão operacional SAC VX INTEGRAÇÕES.
+ */
+export function gerarMensagemTecnologia(placa: string): string {
+  return `*SAC VX INTEGRAÇÕES:*\n\nestamos com uma perca de sinal dessa placa: ${placa} , motorista está seguindo para o cliente e não realizou nenhuma parada no momento e demais placas estão posicionando sem travamento no mesmo local , por gentileza verificar`;
+}
 
 /**
- * Gera mensagem no formato corporativo SAC VX INTEGRAÇÕES.
- * O formato é texto corrido conforme padrão operacional.
+ * Mensagem padrão para TRANSPORTADORA.
+ * Texto fixo conforme padrão operacional SAC VX INTEGRAÇÕES.
  */
+export function gerarMensagemTransportadora(placa: string): string {
+  return `*SAC VX INTEGRAÇÕES:*\n\nplaca: ${placa}\nmotorista travou entraremos em contato com o motorista e tecnologia para ser tratado a perca de sinal em 1h.`;
+}
+
+// Keep backward compat
 export function gerarMensagemWhatsApp(
   placa: string,
-  horaTravou: string,
-  operadorNome?: string,
-  tecnologia?: string,
+  _horaTravou?: string,
+  _operadorNome?: string,
+  _tecnologia?: string,
 ): string {
-  const saudacao = saudacaoPorHorario();
-  return `SAC VX INTEGRAÇÕES: ${saudacao} , Tudo Bem? Estamos com uma perca de sinal dessa placa: ${placa} , conseguem verificar o motivo de ter travado ? o motorista está a caminho do cliente ou existe alguma falha na integração que os dados não estão vindo pra gente ?`;
+  return gerarMensagemTecnologia(placa);
 }
 
 /**
@@ -59,8 +64,39 @@ export function validarPreEnvioWhatsApp(params: {
   fotoUrl: string | null;
 }): string[] {
   const erros: string[] = [];
-  if (!params.whatsappNumero?.trim()) erros.push("Número WhatsApp não cadastrado para esta tecnologia.");
+  if (!params.whatsappNumero?.trim()) erros.push("Número WhatsApp não cadastrado.");
   if (!params.placa?.trim()) erros.push("Placa não informada.");
   if (!params.fotoUrl) erros.push("Nenhuma foto/print anexada ao chamado.");
   return erros;
+}
+
+/**
+ * Copy an image from URL to clipboard as PNG blob for pasting into WhatsApp.
+ */
+export async function copiarImagemParaClipboard(imageUrl: string): Promise<void> {
+  const response = await fetch(imageUrl);
+  const blob = await response.blob();
+  
+  // Convert to PNG if needed
+  const pngBlob = await new Promise<Blob>((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob((b) => {
+        if (b) resolve(b);
+        else reject(new Error("Falha ao converter imagem"));
+      }, "image/png");
+    };
+    img.onerror = () => reject(new Error("Falha ao carregar imagem"));
+    img.src = imageUrl;
+  });
+
+  await navigator.clipboard.write([
+    new ClipboardItem({ "image/png": pngBlob }),
+  ]);
 }
