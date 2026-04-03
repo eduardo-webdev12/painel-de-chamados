@@ -278,77 +278,199 @@ export default function Confiabilidade() {
         </CardContent>
       </Card>
 
-      {/* Evolução Mensal */}
-      {evolucao.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2"><TrendingUp className="h-4 w-4" /> Evolução Mensal do Score</CardTitle>
-            <CardDescription className="text-xs">Tendência de confiabilidade por tecnologia nos últimos 6 meses</CardDescription>
-          </CardHeader>
-          <CardContent className="h-[380px] pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={evolucao} margin={{ left: 10, right: 30, top: 10, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis
-                  dataKey="mes"
-                  fontSize={11}
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                  tickMargin={8}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                />
-                <YAxis
-                  domain={[0, 100]}
-                  fontSize={11}
-                  tick={{ fill: "hsl(var(--muted-foreground))" }}
-                  tickMargin={6}
-                  axisLine={{ stroke: "hsl(var(--border))" }}
-                  label={{ value: "Score", angle: -90, position: "insideLeft", style: { fill: "hsl(var(--muted-foreground))", fontSize: 10 } }}
-                />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(var(--card))",
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: 8,
-                    padding: "8px 12px",
-                    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
-                  }}
-                  formatter={(v: number) => [`${v} pts`, undefined]}
-                  labelStyle={{ fontWeight: 600, marginBottom: 4 }}
-                />
-                <Legend
-                  wrapperStyle={{ fontSize: 11, paddingTop: 12 }}
-                  iconType="circle"
-                  iconSize={8}
-                />
-                {techNames.map((name, i) => {
-                  const colors = [
-                    "hsl(142, 71%, 45%)",
-                    "hsl(217, 91%, 60%)",
-                    "hsl(25, 95%, 53%)",
-                    "hsl(0, 84%, 60%)",
-                    "hsl(262, 83%, 58%)",
-                    "hsl(180, 70%, 45%)",
-                    "hsl(45, 93%, 47%)",
-                    "hsl(330, 80%, 55%)",
-                    "hsl(195, 85%, 50%)",
-                  ];
-                  return (
-                    <Line
-                      key={name}
-                      type="monotone"
-                      dataKey={name}
-                      stroke={colors[i % colors.length]}
-                      strokeWidth={2.5}
-                      dot={{ r: 4, strokeWidth: 2, fill: "hsl(var(--card))" }}
-                      activeDot={{ r: 6, strokeWidth: 2 }}
-                    />
-                  );
-                })}
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      )}
+      {/* Evolução Mensal — Redesign Executivo */}
+      {evolucao.length > 0 && (() => {
+        const TECH_COLORS = [
+          "hsl(142, 71%, 45%)", "hsl(217, 91%, 60%)", "hsl(25, 95%, 53%)",
+          "hsl(0, 84%, 60%)", "hsl(262, 83%, 58%)", "hsl(180, 70%, 45%)",
+        ];
+
+        // Compute average per month
+        const evolWithAvg = evolucao.map((row: any) => {
+          const vals = techNames.map(n => row[n]).filter((v: any) => typeof v === "number" && v > 0);
+          return { ...row, _media: vals.length ? Math.round(vals.reduce((a: number, b: number) => a + b, 0) / vals.length) : 0 };
+        });
+
+        // Determine which techs to show (user-selected or top 3)
+        const visibleTechs = selectedTechs.length > 0
+          ? selectedTechs
+          : techNames.slice(0, 3);
+
+        // Trend cards data
+        const lastMonth = evolWithAvg[evolWithAvg.length - 1];
+        const prevMonth = evolWithAvg.length > 1 ? evolWithAvg[evolWithAvg.length - 2] : null;
+        const avgCurrent = lastMonth?._media ?? 0;
+        const avgPrev = prevMonth?._media ?? 0;
+        const trendDiff = avgCurrent - avgPrev;
+
+        const bestTech = techScores[0];
+        const worstTech = techScores[techScores.length - 1];
+
+        // Bar chart data for current month
+        const barData = techNames.map(name => ({
+          name: name.length > 10 ? name.slice(0, 9) + "…" : name,
+          score: lastMonth?.[name] ?? 0,
+          fill: scoreColor(lastMonth?.[name] ?? 0),
+        }));
+
+        return (
+          <div className="space-y-4">
+            {/* Executive Summary Cards */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Score Médio Atual</p>
+                  <div className="flex items-end gap-2">
+                    <span className="text-3xl font-bold">{avgCurrent}</span>
+                    <span className="text-xs text-muted-foreground mb-1">/ 100</span>
+                  </div>
+                  <div className="flex items-center gap-1 mt-1">
+                    {trendDiff > 0 ? <TrendingUp className="h-3.5 w-3.5 text-green-500" /> : trendDiff < 0 ? <TrendingDown className="h-3.5 w-3.5 text-red-500" /> : <Minus className="h-3.5 w-3.5 text-muted-foreground" />}
+                    <span className={`text-xs font-medium ${trendDiff > 0 ? "text-green-600" : trendDiff < 0 ? "text-red-600" : "text-muted-foreground"}`}>
+                      {trendDiff > 0 ? "+" : ""}{trendDiff} pts vs mês anterior
+                    </span>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground font-medium mb-1">Tendência</p>
+                  <div className="flex items-center gap-2">
+                    {trendDiff > 0 ? (
+                      <><TrendingUp className="h-6 w-6 text-green-500" /><span className="text-lg font-semibold text-green-600">Subindo</span></>
+                    ) : trendDiff < 0 ? (
+                      <><TrendingDown className="h-6 w-6 text-red-500" /><span className="text-lg font-semibold text-red-600">Caindo</span></>
+                    ) : (
+                      <><Minus className="h-6 w-6 text-muted-foreground" /><span className="text-lg font-semibold">Estável</span></>
+                    )}
+                  </div>
+                  <Progress value={avgCurrent} className="mt-2 h-1.5" />
+                </CardContent>
+              </Card>
+              <Card className="border-green-200/50">
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground font-medium mb-1">🏆 Melhor Tecnologia</p>
+                  <p className="text-lg font-bold truncate">{bestTech?.nome ?? "—"}</p>
+                  <p className="text-sm text-green-600 font-semibold">{bestTech?.score ?? 0} pts</p>
+                </CardContent>
+              </Card>
+              <Card className="border-red-200/50">
+                <CardContent className="p-4">
+                  <p className="text-xs text-muted-foreground font-medium mb-1">⚠️ Pior Tecnologia</p>
+                  <p className="text-lg font-bold truncate">{worstTech?.nome ?? "—"}</p>
+                  <p className="text-sm text-red-600 font-semibold">{worstTech?.score ?? 0} pts</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Chart with controls */}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between flex-wrap gap-3">
+                  <div>
+                    <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4" /> Evolução Mensal do Score
+                    </CardTitle>
+                    <CardDescription className="text-xs">Últimos 6 meses — selecione tecnologias para comparar</CardDescription>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Select value={evolView} onValueChange={(v) => setEvolView(v as any)}>
+                      <SelectTrigger className="w-32 h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="linha">Linha</SelectItem>
+                        <SelectItem value="barras">Barras Mensal</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {/* Tech filter chips */}
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  <button
+                    onClick={() => setSelectedTechs([])}
+                    className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${selectedTechs.length === 0 ? "bg-primary text-primary-foreground border-primary" : "bg-muted text-muted-foreground border-border hover:bg-accent"}`}
+                  >
+                    Top 3
+                  </button>
+                  {techNames.map((name, i) => {
+                    const active = selectedTechs.includes(name);
+                    return (
+                      <button
+                        key={name}
+                        onClick={() => {
+                          if (active) setSelectedTechs(prev => prev.filter(t => t !== name));
+                          else if (selectedTechs.length < 3) setSelectedTechs(prev => [...prev, name]);
+                        }}
+                        className={`px-2.5 py-1 rounded-full text-xs font-medium border transition-colors ${active ? "text-white border-transparent" : "bg-muted text-muted-foreground border-border hover:bg-accent"}`}
+                        style={active ? { backgroundColor: TECH_COLORS[i % TECH_COLORS.length] } : {}}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                  {selectedTechs.length >= 3 && (
+                    <span className="text-xs text-muted-foreground self-center ml-1">máx. 3</span>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="h-[360px] pt-2">
+                {evolView === "linha" ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ComposedChart data={evolWithAvg} margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
+                      <defs>
+                        <linearGradient id="avgFill" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.1} />
+                          <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="mes" fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} tickMargin={8} />
+                      <YAxis domain={[0, 100]} fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} tickMargin={6} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8, boxShadow: "0 4px 12px rgba(0,0,0,0.1)" }}
+                        formatter={(v: number, name: string) => [`${v} pts`, name === "_media" ? "Média Geral" : name]}
+                        labelStyle={{ fontWeight: 600, marginBottom: 4 }}
+                      />
+                      {/* Average area */}
+                      <Area type="monotone" dataKey="_media" fill="url(#avgFill)" stroke="hsl(var(--primary))" strokeWidth={2} strokeDasharray="6 3" dot={false} name="Média Geral" />
+                      {/* Selected tech lines */}
+                      {visibleTechs.map((name, i) => {
+                        const globalIdx = techNames.indexOf(name);
+                        return (
+                          <Line
+                            key={name}
+                            type="monotone"
+                            dataKey={name}
+                            stroke={TECH_COLORS[globalIdx % TECH_COLORS.length]}
+                            strokeWidth={2.5}
+                            dot={{ r: 4, strokeWidth: 2, fill: "hsl(var(--card))" }}
+                            activeDot={{ r: 6, strokeWidth: 2 }}
+                          />
+                        );
+                      })}
+                      <Legend wrapperStyle={{ fontSize: 11, paddingTop: 8 }} iconType="circle" iconSize={8} />
+                    </ComposedChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={barData} margin={{ left: 10, right: 20, top: 10, bottom: 10 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                      <XAxis dataKey="name" fontSize={10} tick={{ fill: "hsl(var(--muted-foreground))" }} tickMargin={8} />
+                      <YAxis domain={[0, 100]} fontSize={11} tick={{ fill: "hsl(var(--muted-foreground))" }} />
+                      <Tooltip
+                        contentStyle={{ backgroundColor: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }}
+                        formatter={(v: number) => [`${v} pts`, "Score"]}
+                      />
+                      <Bar dataKey="score" radius={[4, 4, 0, 0]} name="Score Mensal">
+                        {barData.map((entry, i) => <Cell key={i} fill={entry.fill} />)}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        );
+      })()}
 
       <Tabs value={tab} onValueChange={setTab}>
         <TabsList>
