@@ -2,13 +2,20 @@ import { useMemo, useState, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useChamados } from "@/hooks/useChamados";
 import {
   calcularScoreConfiabilidade, calcularScorePlacas, calcularEvolucaoMensal,
   SCORE_CONFIG, type TecnologiaScore, type PlacaScore,
 } from "@/lib/nocAnalytics";
-import { Shield, AlertTriangle, TrendingUp, Cpu, Car, Timer, RotateCcw, Zap, Award, FileText, FileSpreadsheet } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend } from "recharts";
+import { Shield, AlertTriangle, TrendingUp, TrendingDown, Cpu, Car, Timer, RotateCcw, Zap, Award, FileText, FileSpreadsheet, Minus } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LineChart, Line, Legend, Area, AreaChart, ComposedChart } from "recharts";
+import { motion } from "framer-motion";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
