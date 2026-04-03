@@ -21,6 +21,8 @@ import Confiabilidade from "./pages/Confiabilidade";
 import PainelExecutivo from "./pages/PainelExecutivo";
 import Monitoramento from "./pages/Monitoramento";
 import GestaoUsuarios from "./pages/GestaoUsuarios";
+import TecnologiasIntegracao from "./pages/TecnologiasIntegracao";
+import ImportarPlanilha from "./pages/ImportarPlanilha";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
