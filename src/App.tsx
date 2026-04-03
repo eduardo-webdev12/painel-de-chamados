@@ -57,6 +57,8 @@ function ProtectedRoutes() {
         <Route path="/painel-executivo" element={<PainelExecutivo />} />
         <Route path="/monitoramento" element={<Monitoramento />} />
         <Route path="/gestao-usuarios" element={<GestaoUsuarios />} />
+        <Route path="/tecnologias-integracao" element={<TecnologiasIntegracao />} />
+        <Route path="/importar-planilha" element={<ImportarPlanilha />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
