@@ -153,6 +153,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          ativo: boolean
           created_at: string
           email: string
           id: string
@@ -161,6 +162,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ativo?: boolean
           created_at?: string
           email: string
           id?: string
@@ -169,6 +171,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ativo?: boolean
           created_at?: string
           email?: string
           id?: string
@@ -199,6 +202,45 @@ export type Database = {
           tecnologia?: string
           updated_at?: string
           whatsapp_numero?: string
+        }
+        Relationships: []
+      }
+      tecnologia_integracoes: {
+        Row: {
+          created_at: string
+          data_hora_queda: string
+          data_hora_retorno: string | null
+          id: string
+          observacao: string | null
+          registrado_por: string | null
+          registrado_por_nome: string | null
+          status: string
+          tecnologia: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_hora_queda?: string
+          data_hora_retorno?: string | null
+          id?: string
+          observacao?: string | null
+          registrado_por?: string | null
+          registrado_por_nome?: string | null
+          status?: string
+          tecnologia: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_hora_queda?: string
+          data_hora_retorno?: string | null
+          id?: string
+          observacao?: string | null
+          registrado_por?: string | null
+          registrado_por_nome?: string | null
+          status?: string
+          tecnologia?: string
+          updated_at?: string
         }
         Relationships: []
       }
