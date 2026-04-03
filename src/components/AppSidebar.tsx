@@ -1,4 +1,4 @@
-import { LayoutDashboard, List, PlusCircle, FileText, Settings, Activity, Car, Truck, Cpu, Radio, Users, Shield, BarChart3 } from "lucide-react";
+import { LayoutDashboard, List, PlusCircle, FileText, Settings, Activity, Car, Truck, Cpu, Radio, Users, Shield, BarChart3, WifiOff, Upload } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
