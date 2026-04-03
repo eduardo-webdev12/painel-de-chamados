@@ -42,6 +42,8 @@ function formatTempo(mins: number) {
 export default function Confiabilidade() {
   const { chamados, loading } = useChamados();
   const [tab, setTab] = useState("tecnologias");
+  const [evolView, setEvolView] = useState<"linha" | "barras">("linha");
+  const [selectedTechs, setSelectedTechs] = useState<string[]>([]);
 
   const techScores = useMemo(() => calcularScoreConfiabilidade(chamados), [chamados]);
   const placaScores = useMemo(() => calcularScorePlacas(chamados), [chamados]);
