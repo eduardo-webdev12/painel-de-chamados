@@ -16,12 +16,6 @@ import { Progress } from "@/components/ui/progress";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { motion } from "framer-motion";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { toast } from "sonner";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 function ScoreBadge({ score, classificacao }: { score: number; classificacao: TecnologiaScore["classificacao"] }) {
   const cfg = SCORE_CONFIG[classificacao];
