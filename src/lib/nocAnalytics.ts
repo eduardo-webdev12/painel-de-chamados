@@ -1,6 +1,7 @@
 import { differenceInMinutes, differenceInHours, parseISO } from "date-fns";
 import type { ChamadoDB } from "@/hooks/useChamados";
 import { normalizarStatusChamado } from "./chamadoWorkflow";
+import { normalizarTecnologia } from "./tecnologiaNormalizacao";
 
 // ─── Risk Classification ──────────────────────────────────
 export type NivelRisco = "baixo" | "medio" | "alto" | "critico";
