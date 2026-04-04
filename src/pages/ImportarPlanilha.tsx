@@ -8,6 +8,7 @@ import { useChamados } from "@/hooks/useChamados";
 import { toast } from "@/hooks/use-toast";
 import { Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { normalizarTecnologia } from "@/lib/tecnologiaNormalizacao";
 
 interface RowData {
   placa: string;
