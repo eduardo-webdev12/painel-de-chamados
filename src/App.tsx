@@ -23,6 +23,7 @@ import Monitoramento from "./pages/Monitoramento";
 import GestaoUsuarios from "./pages/GestaoUsuarios";
 import TecnologiasIntegracao from "./pages/TecnologiasIntegracao";
 import ImportarPlanilha from "./pages/ImportarPlanilha";
+import RecorrenciasTecnologias from "./pages/RecorrenciasTecnologias";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
