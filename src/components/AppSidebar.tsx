@@ -23,6 +23,7 @@ const operacionalItems = [
   { title: "Confiabilidade", url: "/confiabilidade", icon: Shield },
   { title: "Painel Executivo", url: "/painel-executivo", icon: BarChart3 },
   { title: "Importar Planilha", url: "/importar-planilha", icon: Upload },
+  { title: "Recorrências", url: "/recorrencias-tecnologias", icon: RefreshCw },
 ];
 
 const sistemaItems = [
