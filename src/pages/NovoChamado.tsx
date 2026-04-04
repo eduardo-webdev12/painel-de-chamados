@@ -12,6 +12,7 @@ import { useChamados } from "@/hooks/useChamados";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { normalizarTecnologia, listarTecnologiasUnicas } from "@/lib/tecnologiaNormalizacao";
 
 function AutocompleteInput({
   id,
@@ -95,9 +96,9 @@ export default function NovoChamado() {
     recorrente: false,
   });
 
-  // Build suggestion lists from existing data
+  // Build suggestion lists from existing data (normalized)
   const transportadoraSuggestions = useMemo(() => [...new Set(chamados.map((c) => c.transportadora))].sort(), [chamados]);
-  const tecnologiaSuggestions = useMemo(() => [...new Set(chamados.map((c) => c.tecnologia))].sort(), [chamados]);
+  const tecnologiaSuggestions = useMemo(() => listarTecnologiasUnicas(chamados.map((c) => c.tecnologia)), [chamados]);
 
   const update = (field: string, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
@@ -120,7 +121,7 @@ export default function NovoChamado() {
     const { data: inserted, error } = await supabase.from("chamados").insert({
       placa: form.placa.toUpperCase(),
       transportadora: form.transportadora,
-      tecnologia: form.tecnologia,
+      tecnologia: normalizarTecnologia(form.tecnologia),
       descricao: form.descricao,
       observacao: form.observacao,
       hora_travou: horaTravou,

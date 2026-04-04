@@ -1,6 +1,7 @@
 import { differenceInMinutes, differenceInHours, parseISO } from "date-fns";
 import type { ChamadoDB } from "@/hooks/useChamados";
 import { normalizarStatusChamado } from "./chamadoWorkflow";
+import { normalizarTecnologia } from "./tecnologiaNormalizacao";
 
 // ─── Risk Classification ──────────────────────────────────
 export type NivelRisco = "baixo" | "medio" | "alto" | "critico";
@@ -102,8 +103,9 @@ export function rankingTecnologias(chamados: ChamadoDB[]): TecnologiaStats[] {
   const totalGeral = chamados.length || 1;
   const map = new Map<string, ChamadoDB[]>();
   chamados.forEach(c => {
-    if (!map.has(c.tecnologia)) map.set(c.tecnologia, []);
-    map.get(c.tecnologia)!.push(c);
+    const tec = normalizarTecnologia(c.tecnologia);
+    if (!map.has(tec)) map.set(tec, []);
+    map.get(tec)!.push(c);
   });
 
   return Array.from(map.entries()).map(([nome, ocs]) => {
@@ -222,7 +224,7 @@ export function calcularScoreConfiabilidade(chamados: ChamadoDB[]): TecnologiaSc
   const placasPorTec = new Map<string, Set<string>>();
 
   chamados.forEach(c => {
-    const tec = c.tecnologia;
+    const tec = normalizarTecnologia(c.tecnologia);
     if (!tecMap.has(tec)) { tecMap.set(tec, []); placasPorTec.set(tec, new Set()); }
     tecMap.get(tec)!.push(c);
     placasPorTec.get(tec)!.add(c.placa.trim().toUpperCase());
@@ -355,7 +357,7 @@ export function calcularEvolucaoMensal(chamados: ChamadoDB[], meses = 6): Evoluc
   }
 
   // All techs
-  const allTechs = [...new Set(chamados.map(c => c.tecnologia))];
+  const allTechs = [...new Set(chamados.map(c => normalizarTecnologia(c.tecnologia)))];
 
   return buckets.map(({ start, label }) => {
     const nextMonth = subMonths(start, -1);

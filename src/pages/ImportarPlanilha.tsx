@@ -8,6 +8,7 @@ import { useChamados } from "@/hooks/useChamados";
 import { toast } from "@/hooks/use-toast";
 import { Upload, Download, FileSpreadsheet, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { normalizarTecnologia } from "@/lib/tecnologiaNormalizacao";
 
 interface RowData {
   placa: string;
@@ -58,7 +59,7 @@ export default function ImportarPlanilha() {
       const parsed: RowData[] = json.map((row: any) => {
         const placa = String(row["Placa"] || row["placa"] || "").toUpperCase().trim();
         const transportadora = String(row["Transportadora"] || row["transportadora"] || "").trim();
-        const tecnologia = String(row["Tecnologia"] || row["tecnologia"] || "").trim();
+        const tecnologia = normalizarTecnologia(String(row["Tecnologia"] || row["tecnologia"] || ""));
         const dataHoraFalha = String(row["Data/Hora Falha"] || row["data_hora_falha"] || row["DataHoraFalha"] || "").trim();
         const observacao = String(row["Observação"] || row["observacao"] || row["Observacao"] || "").trim();
 
@@ -92,7 +93,7 @@ export default function ImportarPlanilha() {
       const { error } = await supabase.from("chamados").insert({
         placa: row.placa,
         transportadora: row.transportadora,
-        tecnologia: row.tecnologia.toUpperCase(),
+        tecnologia: row.tecnologia,
         descricao: `Importado via planilha${row.observacao ? `: ${row.observacao}` : ""}`,
         tempo_travada: "A verificar",
         status: "Em Tratativa",
