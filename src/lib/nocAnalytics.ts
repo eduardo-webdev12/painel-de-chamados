@@ -357,7 +357,7 @@ export function calcularEvolucaoMensal(chamados: ChamadoDB[], meses = 6): Evoluc
   }
 
   // All techs
-  const allTechs = [...new Set(chamados.map(c => c.tecnologia))];
+  const allTechs = [...new Set(chamados.map(c => normalizarTecnologia(c.tecnologia)))];
 
   return buckets.map(({ start, label }) => {
     const nextMonth = subMonths(start, -1);
