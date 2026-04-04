@@ -224,7 +224,7 @@ export function calcularScoreConfiabilidade(chamados: ChamadoDB[]): TecnologiaSc
   const placasPorTec = new Map<string, Set<string>>();
 
   chamados.forEach(c => {
-    const tec = c.tecnologia;
+    const tec = normalizarTecnologia(c.tecnologia);
     if (!tecMap.has(tec)) { tecMap.set(tec, []); placasPorTec.set(tec, new Set()); }
     tecMap.get(tec)!.push(c);
     placasPorTec.get(tec)!.add(c.placa.trim().toUpperCase());
