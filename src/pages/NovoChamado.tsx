@@ -12,6 +12,7 @@ import { useChamados } from "@/hooks/useChamados";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { normalizarTecnologia, listarTecnologiasUnicas } from "@/lib/tecnologiaNormalizacao";
 
 function AutocompleteInput({
   id,

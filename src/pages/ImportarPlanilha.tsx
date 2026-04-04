@@ -93,7 +93,7 @@ export default function ImportarPlanilha() {
       const { error } = await supabase.from("chamados").insert({
         placa: row.placa,
         transportadora: row.transportadora,
-        tecnologia: row.tecnologia.toUpperCase(),
+        tecnologia: row.tecnologia,
         descricao: `Importado via planilha${row.observacao ? `: ${row.observacao}` : ""}`,
         tempo_travada: "A verificar",
         status: "Em Tratativa",
