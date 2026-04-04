@@ -103,8 +103,9 @@ export function rankingTecnologias(chamados: ChamadoDB[]): TecnologiaStats[] {
   const totalGeral = chamados.length || 1;
   const map = new Map<string, ChamadoDB[]>();
   chamados.forEach(c => {
-    if (!map.has(c.tecnologia)) map.set(c.tecnologia, []);
-    map.get(c.tecnologia)!.push(c);
+    const tec = normalizarTecnologia(c.tecnologia);
+    if (!map.has(tec)) map.set(tec, []);
+    map.get(tec)!.push(c);
   });
 
   return Array.from(map.entries()).map(([nome, ocs]) => {
