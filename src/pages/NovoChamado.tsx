@@ -95,9 +95,9 @@ export default function NovoChamado() {
     recorrente: false,
   });
 
-  // Build suggestion lists from existing data
+  // Build suggestion lists from existing data (normalized)
   const transportadoraSuggestions = useMemo(() => [...new Set(chamados.map((c) => c.transportadora))].sort(), [chamados]);
-  const tecnologiaSuggestions = useMemo(() => [...new Set(chamados.map((c) => c.tecnologia))].sort(), [chamados]);
+  const tecnologiaSuggestions = useMemo(() => listarTecnologiasUnicas(chamados.map((c) => c.tecnologia)), [chamados]);
 
   const update = (field: string, value: string | boolean) => {
     setForm((prev) => ({ ...prev, [field]: value }));
