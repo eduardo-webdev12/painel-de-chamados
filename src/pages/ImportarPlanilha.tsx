@@ -59,7 +59,7 @@ export default function ImportarPlanilha() {
       const parsed: RowData[] = json.map((row: any) => {
         const placa = String(row["Placa"] || row["placa"] || "").toUpperCase().trim();
         const transportadora = String(row["Transportadora"] || row["transportadora"] || "").trim();
-        const tecnologia = String(row["Tecnologia"] || row["tecnologia"] || "").trim();
+        const tecnologia = normalizarTecnologia(String(row["Tecnologia"] || row["tecnologia"] || ""));
         const dataHoraFalha = String(row["Data/Hora Falha"] || row["data_hora_falha"] || row["DataHoraFalha"] || "").trim();
         const observacao = String(row["Observação"] || row["observacao"] || row["Observacao"] || "").trim();
 
