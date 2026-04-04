@@ -120,7 +120,7 @@ export default function NovoChamado() {
     const { data: inserted, error } = await supabase.from("chamados").insert({
       placa: form.placa.toUpperCase(),
       transportadora: form.transportadora,
-      tecnologia: form.tecnologia,
+      tecnologia: normalizarTecnologia(form.tecnologia),
       descricao: form.descricao,
       observacao: form.observacao,
       hora_travou: horaTravou,
