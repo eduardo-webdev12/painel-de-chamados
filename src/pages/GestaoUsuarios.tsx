@@ -110,10 +110,15 @@ export default function GestaoUsuarios() {
   const handleDelete = async () => {
     if (!deleteTarget) return;
     try {
-      // Remove role and profile
-      await supabase.from("user_roles").delete().eq("user_id", deleteTarget.user_id);
-      await supabase.from("profiles").delete().eq("user_id", deleteTarget.user_id);
+      // Remove role first (foreign key dependency)
+      const { error: roleErr } = await supabase.from("user_roles").delete().eq("user_id", deleteTarget.user_id);
+      if (roleErr) throw roleErr;
 
+      // Remove profile
+      const { error: profErr } = await supabase.from("profiles").delete().eq("user_id", deleteTarget.user_id);
+      if (profErr) throw profErr;
+
+      // Log the action
       await supabase.from("chamado_historico").insert({
         chamado_id: "00000000-0000-0000-0000-000000000000",
         acao: "Exclusão de usuário",
@@ -124,9 +129,10 @@ export default function GestaoUsuarios() {
         usuario_cargo: profile?.cargo,
       });
 
-      toast({ title: "Usuário excluído do sistema" });
+      // Remove from local state immediately
+      setUsers(prev => prev.filter(u => u.user_id !== deleteTarget.user_id));
+      toast({ title: "Usuário excluído do sistema com sucesso" });
       setDeleteTarget(null);
-      fetchUsers();
     } catch (err: any) {
       toast({ title: "Erro ao excluir", description: err?.message, variant: "destructive" });
     }
