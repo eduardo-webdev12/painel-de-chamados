@@ -7,8 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { StatusBadge } from "@/components/StatusBadge";
 import { useChamados } from "@/hooks/useChamados";
 import { normalizarStatusChamado } from "@/lib/chamadoWorkflow";
+import { formatDateTimeBrazil } from "@/lib/dateTime";
 import { Search } from "lucide-react";
-import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
+import { parseISO, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
 
 export default function Chamados() {
   const { chamados, loading } = useChamados();
@@ -171,7 +172,7 @@ export default function Chamados() {
                       ) : "—"}
                     </TableCell>
                     <TableCell>{c.recorrente ? `Sim (${c.contagem_recorrencia}x)` : "Não"}</TableCell>
-                    <TableCell className="text-muted-foreground">{format(parseISO(c.data_abertura), "dd/MM/yy HH:mm")}</TableCell>
+                    <TableCell className="text-muted-foreground">{formatDateTimeBrazil(c.data_abertura)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

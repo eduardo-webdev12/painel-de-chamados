@@ -21,6 +21,7 @@ import { ArrowLeft, RotateCcw, History, Trash2, Upload, Link as LinkIcon, Messag
 import { gerarMensagemTecnologia, gerarMensagemTransportadora, abrirWhatsApp, validarPreEnvioWhatsApp, copiarImagemParaClipboard } from "@/lib/whatsapp";
 import { montarPayloadEncerramento, montarPayloadRecorrencia, normalizarStatusChamado, type EncerrarOpcao } from "@/lib/chamadoWorkflow";
 import type { ChamadoDB } from "@/hooks/useChamados";
+import { formatDateTimeBrazil } from "@/lib/dateTime";
 
 interface HistoricoItem {
   id: string;
@@ -393,17 +394,17 @@ export default function DetalhesChamado() {
     { label: "Recorrente", value: chamado.recorrente ? `Sim (${chamado.contagem_recorrencia}x)` : "Não" },
     { label: "Criado por", value: chamado.created_by_name || "—" },
     { label: "Cargo (criador)", value: chamado.created_by_role || "—" },
-    { label: "Data de Abertura", value: format(parseISO(chamado.data_abertura), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) },
-    ...(chamado.hora_travou ? [{ label: "Hora que Travou", value: format(parseISO(chamado.hora_travou), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) }] : []),
+    { label: "Data de Abertura", value: formatDateTimeBrazil(chamado.data_abertura, { includeConnector: true }) },
+    ...(chamado.hora_travou ? [{ label: "Hora que Travou", value: formatDateTimeBrazil(chamado.hora_travou, { includeConnector: true }) }] : []),
     ...(chamado.finalizado_por_nome ? [
       { label: "Finalizado por", value: chamado.finalizado_por_nome },
       { label: "Cargo (finalizador)", value: chamado.finalizado_por_cargo || "—" },
     ] : []),
     ...(chamado.finalizado_em ? [
-      { label: "Finalizado em", value: format(parseISO(chamado.finalizado_em), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) },
+      { label: "Finalizado em", value: formatDateTimeBrazil(chamado.finalizado_em, { includeConnector: true }) },
     ] : []),
     ...(chamado.data_hora_retorno_sinal ? [
-      { label: "Retorno do sinal", value: format(parseISO(chamado.data_hora_retorno_sinal), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) },
+      { label: "Retorno do sinal", value: formatDateTimeBrazil(chamado.data_hora_retorno_sinal, { includeConnector: true }) },
     ] : []),
     ...(chamado.data_resolucao ? [{ label: "Data de Resolução", value: format(parseISO(chamado.data_resolucao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) }] : []),
   ];
