@@ -9,6 +9,7 @@ import { analisarPlacas, RISCO_CONFIG, type PlacaRisco } from "@/lib/nocAnalytic
 import { Search, Car, Clock, RotateCcw, Cpu } from "lucide-react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { motion } from "framer-motion";
+import { formatDateTimeBrazil } from "@/lib/dateTime";
 
 export default function HistoricoPlacas() {
   const { chamados, loading } = useChamados();
@@ -96,7 +97,7 @@ export default function HistoricoPlacas() {
                     {ocorrencias.slice(0, 5).map(c => (
                       <div key={c.id} className="flex items-center justify-between py-1.5 border-b last:border-0 cursor-pointer hover:bg-muted/50 px-2 rounded" onClick={() => navigate(`/chamados/${c.id}`)}>
                         <div className="flex items-center gap-3">
-                          <span className="text-xs font-mono">{format(parseISO(c.data_abertura), "dd/MM/yy HH:mm")}</span>
+                          <span className="text-xs font-mono">{formatDateTimeBrazil(c.data_abertura)}</span>
                           <span className="text-xs text-muted-foreground">{c.transportadora}</span>
                           <span className="text-xs text-muted-foreground">• {c.tecnologia}</span>
                           {c.created_by_name && <span className="text-xs text-muted-foreground">por {c.created_by_name}</span>}

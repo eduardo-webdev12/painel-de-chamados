@@ -9,6 +9,7 @@ import { format, parseISO, isAfter, isBefore, differenceInMinutes } from "date-f
 import { ptBR } from "date-fns/locale";
 import { toast } from "@/hooks/use-toast";
 import { normalizarStatusChamado } from "@/lib/chamadoWorkflow";
+import { formatDateTimeBrazil } from "@/lib/dateTime";
 
 export default function Relatorios() {
   const { chamados, loading } = useChamados();
@@ -34,13 +35,13 @@ export default function Relatorios() {
       "Cargo (criador)": c.created_by_role || "—",
       "Finalizado por": c.finalizado_por_nome || "—",
       "Cargo (finalizador)": c.finalizado_por_cargo || "—",
-      "Finalizado em": c.finalizado_em ? format(parseISO(c.finalizado_em), "dd/MM/yyyy HH:mm") : "—",
-      "Retorno do Sinal": c.data_hora_retorno_sinal ? format(parseISO(c.data_hora_retorno_sinal), "dd/MM/yyyy HH:mm") : "—",
+      "Finalizado em": c.finalizado_em ? formatDateTimeBrazil(c.finalizado_em) : "—",
+      "Retorno do Sinal": c.data_hora_retorno_sinal ? formatDateTimeBrazil(c.data_hora_retorno_sinal) : "—",
       Recorrente: c.recorrente ? `Sim (${c.contagem_recorrencia}x)` : "Não",
-      "Hora que Travou": c.hora_travou ? format(parseISO(c.hora_travou), "dd/MM/yyyy HH:mm") : "—",
+      "Hora que Travou": c.hora_travou ? formatDateTimeBrazil(c.hora_travou) : "—",
       "Tempo Travada": c.tempo_travada,
-      "Data Abertura": format(parseISO(c.data_abertura), "dd/MM/yyyy HH:mm"),
-      "Data Resolução": c.data_resolucao ? format(parseISO(c.data_resolucao), "dd/MM/yyyy HH:mm") : "—",
+      "Data Abertura": formatDateTimeBrazil(c.data_abertura),
+      "Data Resolução": c.data_resolucao ? formatDateTimeBrazil(c.data_resolucao) : "—",
       Descrição: c.descricao,
       Observação: c.observacao || "",
       "Observação Técnica": c.observacao_tecnica || "",
@@ -254,9 +255,9 @@ export default function Relatorios() {
         c.transportadora,
         c.tecnologia,
         c.status,
-        c.hora_travou ? format(parseISO(c.hora_travou), "dd/MM/yy HH:mm") : "—",
+        c.hora_travou ? formatDateTimeBrazil(c.hora_travou) : "—",
         c.tempo_travada,
-        format(parseISO(c.data_abertura), "dd/MM/yy HH:mm"),
+        formatDateTimeBrazil(c.data_abertura),
         c.created_by_name || "—",
         c.finalizado_por_nome || "—",
         c.observacao ? c.observacao.substring(0, 35) : "",
