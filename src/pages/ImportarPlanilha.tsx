@@ -205,7 +205,7 @@ export default function ImportarPlanilha() {
         created_by_email: profile?.email,
         created_by_role: profile?.cargo,
         observacao: row.observacao || null,
-        hora_travou: row.dataHoraFalha ? new Date(row.dataHoraFalha).toISOString() : null,
+        hora_travou: row.dataHoraISO || null,
       });
       if (error) { ignorados++; } else { criados++; }
     }
@@ -270,7 +270,10 @@ export default function ImportarPlanilha() {
                     <TableCell className="font-mono font-medium">{r.placa}</TableCell>
                     <TableCell>{r.transportadora}</TableCell>
                     <TableCell>{r.tecnologia}</TableCell>
-                    <TableCell>{r.dataHoraFalha}</TableCell>
+                    <TableCell>
+                      <span>{r.dataHoraFalha}</span>
+                      {r.dataHoraWarning && <span className="block text-xs text-amber-500">{r.dataHoraWarning}</span>}
+                    </TableCell>
                     <TableCell className="max-w-[200px] truncate">{r.observacao}</TableCell>
                   </TableRow>
                 ))}
