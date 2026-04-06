@@ -158,8 +158,13 @@ export default function ImportarPlanilha() {
         const placa = String(row["Placa"] || row["placa"] || "").toUpperCase().trim();
         const transportadora = String(row["Transportadora"] || row["transportadora"] || "").trim();
         const tecnologia = normalizarTecnologia(String(row["Tecnologia"] || row["tecnologia"] || ""));
-        const dataHoraFalha = String(row["Data/Hora Falha"] || row["data_hora_falha"] || row["DataHoraFalha"] || "").trim();
+        const rawData = String(row["Data/Hora Falha"] || row["data_hora_falha"] || row["DataHoraFalha"] || "").trim();
         const observacao = String(row["Observação"] || row["observacao"] || row["Observacao"] || "").trim();
+
+        const dataParsed = parseDataHoraFlexivel(rawData);
+        const dataHoraFalha = dataParsed.display;
+        const dataHoraISO = dataParsed.iso;
+        const dataHoraWarning = dataParsed.warning;
 
         let valid = true;
         let error = "";
@@ -168,7 +173,7 @@ export default function ImportarPlanilha() {
         else if (!tecnologia) { valid = false; error = "Tecnologia vazia"; }
         else if (placasAbertas.has(placa)) { valid = false; error = "Chamado já aberto"; }
 
-        return { placa, transportadora, tecnologia, dataHoraFalha, observacao, valid, error };
+        return { placa, transportadora, tecnologia, dataHoraFalha, dataHoraISO, dataHoraWarning, observacao, valid, error };
       });
 
       setRows(parsed);
