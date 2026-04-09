@@ -23,6 +23,7 @@ import Monitoramento from "./pages/Monitoramento";
 import GestaoUsuarios from "./pages/GestaoUsuarios";
 import TecnologiasIntegracao from "./pages/TecnologiasIntegracao";
 import ImportarPlanilha from "./pages/ImportarPlanilha";
+import ImportarPlanilhaABM from "./pages/ImportarPlanilhaABM";
 import RecorrenciasTecnologias from "./pages/RecorrenciasTecnologias";
 import NotFound from "./pages/NotFound";
 
@@ -60,6 +61,7 @@ function ProtectedRoutes() {
         <Route path="/gestao-usuarios" element={<GestaoUsuarios />} />
         <Route path="/tecnologias-integracao" element={<TecnologiasIntegracao />} />
         <Route path="/importar-planilha" element={<ImportarPlanilha />} />
+        <Route path="/importar-abm" element={<ImportarPlanilhaABM />} />
         <Route path="/recorrencias-tecnologias" element={<RecorrenciasTecnologias />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

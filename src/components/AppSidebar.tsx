@@ -1,4 +1,4 @@
-import { LayoutDashboard, List, PlusCircle, FileText, Settings, Activity, Car, Truck, Cpu, Radio, Users, Shield, BarChart3, WifiOff, Upload, RefreshCw } from "lucide-react";
+import { LayoutDashboard, List, PlusCircle, FileText, Settings, Activity, Car, Truck, Cpu, Radio, Users, Shield, BarChart3, WifiOff, Upload, RefreshCw, FileSpreadsheet } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -23,6 +23,7 @@ const operacionalItems = [
   { title: "Confiabilidade", url: "/confiabilidade", icon: Shield },
   { title: "Painel Executivo", url: "/painel-executivo", icon: BarChart3 },
   { title: "Importar Planilha", url: "/importar-planilha", icon: Upload },
+  { title: "Importar ABM", url: "/importar-abm", icon: FileSpreadsheet },
   { title: "Recorrências", url: "/recorrencias-tecnologias", icon: RefreshCw },
 ];
 
