@@ -1,4 +1,4 @@
-import { LayoutDashboard, List, PlusCircle, FileText, Settings, Activity, Car, Truck, Cpu, Radio, Users, Shield, BarChart3, WifiOff, Upload, RefreshCw, FileSpreadsheet } from "lucide-react";
+import { LayoutDashboard, List, PlusCircle, FileText, Settings, Activity, Car, Truck, Cpu, Radio, Users, Shield, BarChart3, WifiOff, Upload, RefreshCw, FileSpreadsheet, Wifi } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import {
   Sidebar, SidebarContent, SidebarGroup, SidebarGroupContent, SidebarGroupLabel,
@@ -25,6 +25,7 @@ const operacionalItems = [
   { title: "Importar Planilha", url: "/importar-planilha", icon: Upload },
   { title: "Importar ABM", url: "/importar-abm", icon: FileSpreadsheet },
   { title: "Recorrências", url: "/recorrencias-tecnologias", icon: RefreshCw },
+  { title: "Perda de Sinal", url: "/relatorio-perdas-sinal", icon: Wifi },
 ];
 
 const sistemaItems = [

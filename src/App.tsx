@@ -25,6 +25,7 @@ import TecnologiasIntegracao from "./pages/TecnologiasIntegracao";
 import ImportarPlanilha from "./pages/ImportarPlanilha";
 import ImportarPlanilhaABM from "./pages/ImportarPlanilhaABM";
 import RecorrenciasTecnologias from "./pages/RecorrenciasTecnologias";
+import RelatorioPerdasSinal from "./pages/RelatorioPerdasSinal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -63,6 +64,7 @@ function ProtectedRoutes() {
         <Route path="/importar-planilha" element={<ImportarPlanilha />} />
         <Route path="/importar-abm" element={<ImportarPlanilhaABM />} />
         <Route path="/recorrencias-tecnologias" element={<RecorrenciasTecnologias />} />
+        <Route path="/relatorio-perdas-sinal" element={<RelatorioPerdasSinal />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Layout>
